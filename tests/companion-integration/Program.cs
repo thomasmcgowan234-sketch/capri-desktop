@@ -1,4 +1,7 @@
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using System.Text;
+using System.Runtime.CompilerServices;
 using CapriDesktop;
 
 sealed class FakeProvider : IBrainProvider
@@ -18,6 +21,7 @@ sealed class FakeProvider : IBrainProvider
 static class Program
 {
     static int checks;
+    static string SourceFile([CallerFilePath] string file = "") => file;
     static void Check(bool condition, string name) { if (!condition) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
     static bool Denied(Action action) { try { action(); return false; } catch (InvalidOperationException) { return true; } }
     static int Main()
@@ -27,6 +31,13 @@ static class Program
         try
         {
             Brain.Keeping = true;
+            Brain.Identity = null;
+            Brain.PersonalityPath = null;
+            string source = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(SourceFile()), "..", "..", "app", "Capri.cs"));
+            string expected = Regex.Match(File.ReadAllText(source), "const string todaysPersona = \"([a-f0-9]+)\";").Groups[1].Value;
+            string actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Brain.Persona))).ToLowerInvariant();
+            Check(actual == expected, "Windows persona snapshot matches the actual shared production prompt");
+            Check(Brain.Stamp(Brain.DefaultPersonality) == Brain.DefaultStamp && !Brain.Retired.Contains(Brain.DefaultStamp), "default personality migration stamp matches current production content");
             Brain.Identity = new CompanionIdentity(Path.Combine(directory, "identity"));
             Brain.PersonalityPath = Brain.MemoryPath = Brain.MemoriesPath = Brain.TranscriptPath = null;
             string proposed = Brain.CompanionCommand("/identity name Rowan");

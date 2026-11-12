@@ -2,6 +2,8 @@
 
 The conversation chooses the direction; the application imports supplied artwork. Ask the companion to discuss a change, approve the idea, and copy its detailed prompt into ChatGPT or another external artwork tool. No image-generation service is installed or called by this workflow.
 
+For a long copyable brief, select Long or Very long under the model's Reply length controls; Auto retains Capri's short conversational output budget. This controls response length without installing an image generator.
+
 A useful external prompt asks for an original full-body 2D character, transparent background, consistent proportions/lighting/palette, and clear idle/talking/blinking/sitting/dragged/sleep expressions. Do not include the companion's surrounding desktop, speech bubble or text. Keep the same frame canvas and registration point across states. A single portrait can establish the design but cannot supply all of Capri's animations: additional frames/strips are required.
 
 ## Package and import
