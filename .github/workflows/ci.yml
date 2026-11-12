@@ -44,6 +44,7 @@ jobs:
           path: |
             out/windows/Capri.exe
             out/windows/Capri-Setup.exe
+            out/windows/licenses/
             LICENSE.md
             THIRD-PARTY-NOTICES.md
             README.md

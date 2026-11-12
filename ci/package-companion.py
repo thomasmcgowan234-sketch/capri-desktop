@@ -23,6 +23,10 @@ def notices(destination):
         target = destination / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / name, target)
+    for name in ["OFL-ShareTechMono.txt", "Barlow-OFL.txt"]:
+        target = destination / "licenses" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / "assets" / "fonts" / name, target)
 
 
 def sha256(path):

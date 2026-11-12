@@ -25,6 +25,15 @@ $resources += Get-ChildItem -LiteralPath (Join-Path $root 'assets\voice') -Filte
 $sources = @('Capri', 'Asides', 'Bolts', 'Commentary', 'Lookout', 'Brain', 'CompanionIdentity', 'CompanionObservation', 'CompanionRoutine', 'CompanionProfile', 'PlanBrain', 'Talk', 'Ribbons', 'Mainframe', 'MainframeMods', 'MainframeModsWindow', 'MainframeSlide', 'Mods', 'ModDirectory', 'ModApi', 'CodeMods', 'ModHooks', 'ModMusic', 'SoundsLike', 'SkinMods', 'SkillMods', 'ArtColors', 'MainframeTips', 'TipChecks', 'MediumChecks', 'FreeKeyChecks', 'Neon', 'Notice', 'Engine', 'Ledges', 'Voice', 'Ears', 'MicMix', 'CableSetup', 'Packaged', 'Dictation', 'HearingStatus', 'Agent', 'Hands', 'GameHud', 'Computer', 'Arrange', 'Mixer', 'Usage', 'Network', 'Play', 'VoicePack', 'Startup', 'Presence', 'Player', 'Ocr', 'GameEars', 'GameNotes', 'GameKeys', 'Frames', 'Reminders', 'GameSense', 'GameWatch', 'SelfKnow', 'Care', 'Clips', 'ClipSettings', 'ClipChecks', 'Minis', 'Chess', 'ChessBoard', 'Files', 'FileFinder', 'Websites', 'Ink', 'Clones', 'ChaosScreen', 'Icons', 'FollowUps', 'WatchAlong', 'CallMode', 'Husk', 'CallEars', 'CallPanel', 'FileEditor', 'FileChecks', 'Reactions', 'ToolChecks', 'ErrorChecks', 'Remote', 'RemoteCrypto', 'RemoteLink', 'RemoteQr', 'RemoteVectors', 'RemoteBrainKeys', 'RemoteBrains', 'RemoteChat', 'MainframeRemote', 'RemoteScreen', 'RemoteCall', 'RemoteLive', 'SmokeRun', 'Setup', 'AssemblyInfo') | ForEach-Object { Join-Path $root ('app\' + $_ + '.cs') }
 & $compiler ($shared + $references + $resources + @('/unsafe+', ('/out:' + $app)) + $sources)
 if ($LASTEXITCODE -ne 0) { throw 'Capri compilation failed.' }
+# Binary distributions retain the original project terms and embedded font/QR notices.
+foreach ($notice in @('LICENSE.md', 'THIRD-PARTY-NOTICES.md')) {
+    Copy-Item -LiteralPath (Join-Path $root $notice) -Destination (Join-Path $out $notice) -Force
+}
+$licenses = Join-Path $out 'licenses'
+New-Item -ItemType Directory -Path $licenses -Force | Out-Null
+foreach ($fontLicense in @('OFL-ShareTechMono.txt', 'Barlow-OFL.txt')) {
+    Copy-Item -LiteralPath (Join-Path $root ('assets\fonts\' + $fontLicense)) -Destination (Join-Path $licenses $fontLicense) -Force
+}
 if ($Store) { Write-Output "Built $app for the Microsoft Store"; return }
 Copy-Item -LiteralPath $app -Destination $setup -Force
 Write-Output "Built $app and $setup"
