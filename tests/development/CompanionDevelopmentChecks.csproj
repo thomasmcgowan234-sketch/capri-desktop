@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>5</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../app/CompanionIdentity.cs" Link="CompanionIdentity.cs" />
+    <Compile Include="../../app/CompanionPrivacy.cs" Link="CompanionPrivacy.cs" />
+    <Compile Include="../../app/CompanionDevelopment.cs" Link="CompanionDevelopment.cs" />
+  </ItemGroup>
+</Project>

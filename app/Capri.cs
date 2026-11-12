@@ -2422,6 +2422,7 @@ namespace CapriDesktop
                 Brain.Routine = new CompanionRoutine(Path.Combine(data, "companion"));
                 CompanionObservation.Configure();
                 Brain.BackgroundPaused = delegate { return BackgroundPaused; };
+                InitializeDevelopment();
             }
             if (smoke) foreach (string old in new[] { Brain.PersonalityPath, Brain.PersonalityBackup }) if (File.Exists(old)) File.Delete(old);
             reminders = new Reminders(data, DateTime.Now);
@@ -14075,6 +14076,8 @@ namespace CapriDesktop
         {
             text = (text ?? "").Trim();
             if (text.Length == 0) return;
+            long developmentInput = 0;
+            if (development != null && switches == 0) development.Invalidate(false);
             if (prompt == "> you: " && switches == 0)
             {
                 string sent = ModsSending(text);
@@ -14100,6 +14103,7 @@ namespace CapriDesktop
                     return;
                 }
                 Brain.IdentityEvidence(text);
+                if (development != null && switches == 0) developmentInput = development.Input(text, true);
             }
             Func<int, string> callReply = prompt == "> you: " && !Security.FromMod(text) ? FriendAnswer(text) : null;
             int callVersion = (callInput || prompt == "> you: ") && CallModeOn ? callSession.Generation : -1;
@@ -14225,6 +14229,7 @@ namespace CapriDesktop
                         said = CallLine(ticket, said);
                         if (CallHands(ticket)) callSession.Keep(callUserVersion, callRecord, said, Brain.Recall, delegate { return ticket == asking; });
                         Answer(ticket, said, state, quiet, problem == null);
+                        if (ticket == asking && problem == null && development != null) development.Replied(developmentInput);
                         if (said == Brain.Offline) FindBrain();
                     });
                 }
@@ -15086,6 +15091,7 @@ namespace CapriDesktop
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            StopDevelopment();
             StopRemote();
             Security.HeldChanged = null;
             if (husk != null) husk.Dispose();

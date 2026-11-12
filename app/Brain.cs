@@ -816,9 +816,10 @@ namespace CapriDesktop
         }
 
         internal static CompanionIdentity Identity;
+        internal static CompanionDevelopment Development;
         internal static CompanionRoutine Routine;
         internal static Func<bool> BackgroundPaused = delegate { return Routine != null && Routine.Paused; };
-        internal const string CompanionHelp = "Companion commands (work without a model): /identity, /identity name NAME, /identity remember FACT, /identity restore; /observe start (30 minutes, local inference), /observe start cloud (selected remote provider may receive screenshots), /observe stop. Also: /quiet hours 22:00-08:00, /quiet hours off, /performance on or /performance off. Use Mainframe for model, microphone, privacy, skins and exit controls.";
+        internal const string CompanionHelp = "Companion commands (work without a model): /identity, /identity name NAME, /identity remember FACT, /identity restore, /identity development status, /identity development on or off; /observe start (30 minutes, local inference), /observe start cloud (selected remote provider may receive screenshots), /observe stop. Also: /quiet hours 22:00-08:00, /quiet hours off, /performance on or /performance off. Use Mainframe for model, microphone, privacy, skins and exit controls.";
         internal static string CompanionCommand(string text)
         {
             if (string.Equals((text ?? "").Trim(), "/companion help", StringComparison.OrdinalIgnoreCase)) return CompanionHelp;
@@ -838,7 +839,14 @@ namespace CapriDesktop
             CompanionIdentity identity = Identity;
             if (identity == null) return null;
             identity.Enabled = Keeping;
-            return identity.HandleCommand(text);
+            string result = identity.HandleCommand(text);
+            CompanionDevelopment development = Development;
+            if (result != null && development != null && (text ?? "").Trim().StartsWith("/identity development", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!Keeping || !identity.DevelopmentEnabled) development.Invalidate(true);
+                result += "\n" + development.Status;
+            }
+            return result;
         }
         internal static bool IdentityInterested(string topic)
         {
@@ -1144,7 +1152,7 @@ namespace CapriDesktop
         internal const string NotesHead = "# What Capri remembers about you\n> She reads this every time you chat. Edit or delete anything here.\n\n";
         private static readonly object noting = new object();
         // Only secrets and things that find them in real life stay out of me.md: Lachy wants every other memory to save.
-        private static readonly Regex Personal = new Regex(@"\b(passwords?|passcodes?|pin (code|number)|log ?in details|credit card|card number|bank (account|details|number)|account number|sort code|routing number|social security|passport|(home|street|postal|email|e-mail) address|(my|their|his|her) address|postcode|post code|zip code|(phone|mobile|cell) number|surname|last name|full name|real name|date of birth|(i|they) live (in|at|on)|(my|their|his|her) school(?: is|'s| is called| called)|school (is )?called)\b|@\w+\.\w+|\d[\d\s-]{6,}\d|\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b", RegexOptions.IgnoreCase);
+        private static readonly Regex Personal = CompanionPrivacy.Personal;
         // A Get to know me label that is a personal detail, like "Email", "Card number" or "Home address". The detail has to end
         // the label, so "Favourite card game" or "Phone model" is kept, and its value still goes through Revealing.
         private static readonly Regex SensitiveLabel = new Regex(@"\b(school|address|phone|mobile|e-?mail|surname|last name|full name|real name|date of birth|passport|card|bank|passwords?|passcode|pin)( (number|no|name|details|account|code|address))?\W*$", RegexOptions.IgnoreCase);
@@ -1352,9 +1360,16 @@ namespace CapriDesktop
                 foreach (Brain worker in stop)
                     try { worker.Cancel(); }
                     catch (Exception error) { Log("memories", -1, "Memory transport cancellation failed: " + error.GetType().Name); }
+                CompanionDevelopment development = Development;
+                if (!value && development != null) development.Invalidate(true);
             }
         }
         internal static int MemoryGeneration { get { lock (writing) return memoryGeneration; } }
+        internal static bool WithMemoryConsent(int generation, Func<bool> action)
+        {
+            if (action == null) return false;
+            lock (writing) return Keeping && generation == memoryGeneration && action();
+        }
         internal static volatile Brain Keeper;
         // Mac and Linux turn this off: their screenshots show her and her bubble, so a glance can take her for part of their
         // screen, and that mustn't become a memory. Her glances still go in the transcript.
@@ -1371,7 +1386,7 @@ namespace CapriDesktop
             "When the file gets long, over about 300 words, merge the oldest days into one '## Earlier' section of a few bullets instead of dropping what still matters.";
 
         // Her notes' rule, plus any line about an address or one that reads like a street address, as small brains slip them in.
-        private static readonly Regex Whereabouts = new Regex(@"(?i:\baddress(es)?\b)|\b\d{1,5}[A-Za-z]?\s+(?:[A-Z][\p{L}']*\s+){1,3}(?:Street|St|Road|Rd|Avenue|Ave|Lane|Drive|Court|Place|Crescent|Boulevard|Blvd|Way|Terrace|Close|Parade|Highway|Grove|Square)\b");
+        private static readonly Regex Whereabouts = CompanionPrivacy.Whereabouts;
 
         private static bool Revealing(string text) { return Personal.IsMatch(text) || Whereabouts.IsMatch(text); }
 
@@ -3057,7 +3072,78 @@ namespace CapriDesktop
 #endif
             Cloud remote = Remote;
             if (remote != null) return remote.Kind == "local" && CompanionObservation.Loopback(remote.Host);
-            return Local != null || CompanionObservation.Loopback(Server ?? Ollama);
+            string address = Server;
+            // Think gives an explicit server priority over a retained local-engine object.
+            return address != null ? CompanionObservation.Loopback(address) : Local != null || CompanionObservation.Loopback(Ollama);
+        }
+
+        // A private fingerprint, never a displayed/logged address or credential. Changing the
+        // model, server/key or local engine invalidates a background identity proposal.
+        internal string DevelopmentSource
+        {
+            get
+            {
+                string model = Model;
+                if (model == null || !LocalInference()) return null;
+                string address, key;
+                GetServer(out address, out key);
+                if (Remote == null && address == null && Local != null && !Local.Awake) return null;
+                string source = SourceOf(Remote, model) + "\n" + address + "\n" + key + "\n"
+                    + (Local == null ? "" : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Local).ToString(System.Globalization.CultureInfo.InvariantCulture)) + "\n"
+                    + (LocalPick == null ? "" : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(LocalPick).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                using (System.Security.Cryptography.SHA256 hash = System.Security.Cryptography.SHA256.Create())
+                    return Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(source)));
+            }
+        }
+
+        internal DevelopmentInference CreateDevelopmentInference()
+        {
+            string model = Model;
+            string source = DevelopmentSource;
+            if (model == null || source == null) return null;
+            Cloud remote = Remote;
+            if (remote != null && (remote.Kind != "local" || !CompanionObservation.Loopback(remote.Host))) return null;
+            Brain fork = new Brain { Model = model, Local = Local, LocalPick = LocalPick };
+            string address, key;
+            GetServer(out address, out key);
+            if (remote != null) { address = remote.Host; key = null; }
+            // Capture the selected loopback endpoint; do not follow later serverOwner changes.
+            fork.SetServer(address, key);
+            string ollama = Ollama;
+            return new DevelopmentInference
+            {
+                Cancel = fork.Cancel,
+                Complete = delegate(string system, string user)
+                {
+                    if (DevelopmentSource != source) throw new WebException("Development source changed.", WebExceptionStatus.RequestCanceled);
+                    return fork.DevelopOnce(model, system, user, ollama);
+                }
+            };
+        }
+
+        private string DevelopOnce(string model, string system, string user, string ollama)
+        {
+            Check(0);
+            ChatMessage[] messages = { new ChatMessage("system", system), new ChatMessage("user", user) };
+            string address, key;
+            GetServer(out address, out key);
+            Engine local = Local;
+            if (address == null && local != null) address = local.Address;
+            if (address != null)
+            {
+                if (!CompanionObservation.Loopback(address)) throw new BrainException("Automatic development requires local inference.");
+                CompletionRequest request = new CompletionRequest { Messages = messages, Limit = 240 };
+                if (Server != null) request.Model = model;
+                Action<HttpWebRequest> sign = string.IsNullOrEmpty(key) ? null : new Action<HttpWebRequest>(delegate(HttpWebRequest sent) { SignServer(sent, key); });
+                CompletionReply reply = Send<CompletionReply>(address + "/v1/chat/completions", request, 30000, null, sign, null, 0, key);
+                return Visible(Read(reply, new List<KeyValuePair<string, ToolArguments>>()));
+            }
+            if (!CompanionObservation.Loopback(ollama)) throw new BrainException("Automatic development requires local inference.");
+            ChatRequest asking = new ChatRequest { Model = model, Messages = messages, Think = false,
+                Options = new ChatOptions { Limit = 240, Context = Math.Min(Window, 8192) } };
+            ChatReply answer = Send<ChatReply>(ollama + "/api/chat", asking, 30000, null, null, null, 0);
+            if (answer.Error != null) throw new BrainException(answer.Error);
+            return answer.Message == null ? null : Visible(answer.Message.Content);
         }
 
 #if !CROSS

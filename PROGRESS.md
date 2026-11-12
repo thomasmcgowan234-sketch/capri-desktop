@@ -1,5 +1,15 @@
 # Progress and continuation record
 
+## Latest automatic-development checkpoint
+
+The privacy-repair revision `b3ad5c6` is verified on GitHub. Hosted run [43266389300](https://github.com/thomasmcgowan234-sketch/capri-desktop/actions/runs/43266389300) passed native Windows runtime **1,417 PASS / 53 LIMIT / 0 FAIL / 0 SKIP**, payload/package marker and silent install/uninstall, plus Linux regressions/build/application smoke. The 53 explicit limits remain physical/device/model acceptance limits. Main is unchanged.
+
+Automatic development is now integrated into the existing Windows and Cross owner-input/reply paths. It collects at most eight distinct safe direct-owner turns, schedules one idle check, uses one local-only 240-token/30-second inference with no tools/images or retry, and stores at most three cited tentative proposals. Persistent cooldown/development controls and schema-2 provenance survive restart. Only direct owner review establishes a claim. Schema-1 migration retains dated raw and rolling backups; corrupt/future files stay read-only.
+
+The common typing case is fixed: a finished reply with an empty input box can be idle while a draft, speech, call/job/fullscreen, quiet or performance policy blocks reflection. Privacy revocation clears the buffer, cancels owned work and fences old results; model/source/revision/profile changes also discard stale output. Shared automatic-evidence filtering now uses the existing contact/location classifier before inference and persistence. Existing explicit-owner/legacy records are preserved.
+
+Focused validation of this checkpoint: **80 identity checks**, **71 coordinator checks**, **59 integrated Brain/policy/privacy/real-loopback transport checks**, **15 package-evidence checks**, and C#5/net48 compilation (12 inherited warnings, zero errors) pass. Independent review found no remaining blocker after the profile-instance and automatic-PII fixes. Live typed UI/restart/profile-swap smoke and final full regression/package CI are next; do not call the new feature Windows-accepted until their results are recorded below. `out/companion-v0.1.0` still contains an older source package and must be replaced after final validation.
+
 ## 12 November 2026 — companion 0.1.0
 
 The uploaded assignment is preserved verbatim in `PROJECT_VISION.md`. Work continues in the prepared `/workspace/capri-desktop` checkout, whose origin is the user's fork, on `companion/persistent-identity`. Original foundation: `26849b2`. No merge to main or change to the original author's repository was made. The earlier Python project was inspected read-only; no old personal data was imported.
@@ -19,7 +29,7 @@ A final Windows-only fix sets Guarded before the inherited legacy-permission mig
 
 ## Environment limitations
 
-The shared-desktop tool failed at initialization with `the gaas-browser node_repl sandbox cannot be disabled`; status reports the selected environment running and desktop capability enabled/state unknown. The isolated X11 application smoke and saved screenshots succeeded independently. No Windows launch/install, physical speech/echo/Discord routing, live Ollama/Qwen3.5 9B, RX 7900 XTX resource measurement or dual-monitor/mixed-DPI acceptance was performed.
+The shared-desktop tool failed at initialization with `the gaas-browser node_repl sandbox cannot be disabled`; status reports the selected environment running and desktop capability enabled/state unknown. The isolated X11 application smoke and saved screenshots succeeded independently. Later hosted Windows launch/runtime/install checks passed as recorded above. Physical speech/echo/Discord routing, live Ollama/Qwen3.5 9B, RX 7900 XTX resource measurement and dual-monitor/mixed-DPI acceptance remain unperformed.
 
 The designated projectless `/codex/.../output` directory is not writable in this cloud executor, even with the execution tool's escalation mode. Deliverable archives are therefore staged under the repository's ignored `out/companion-v0.1.0/` directory. Source commits remain the authoritative continuation state.
 

@@ -672,6 +672,7 @@ namespace CapriDesktop
                 Brain.Identity = new CompanionIdentity(Path.Combine(folder, "companion"));
                 Brain.Routine = new CompanionRoutine(Path.Combine(folder, "companion"));
                 CompanionObservation.Configure();
+                InitializeDevelopment();
             }
             // Remember our chats, like on Windows: every chat goes in a daily transcript, and the brain they picked folds older
             // lines into memories.md, which she reads every chat.
@@ -814,7 +815,7 @@ namespace CapriDesktop
             frames.Interval = TimeSpan.FromMilliseconds(33);
             frames.Tick += delegate { Program.Guard(Tick); };
             // Closing her while held must not leave the frame timer moving a closed window.
-            Closed += delegate { StopNativeListening(); Unhold(); pressed = dragging = dragPending = false; frames.Stop(); Desk.Dispose(); Screens.Changed -= BindDesktopScreens; };
+            Closed += delegate { StopDevelopment(); StopNativeListening(); Unhold(); pressed = dragging = dragPending = false; frames.Stop(); Desk.Dispose(); Screens.Changed -= BindDesktopScreens; };
             Deactivated += delegate { if (!(Desk is HyprlandDesk)) Program.Guard(Unhold); };
             Opened += delegate
             {
@@ -4439,6 +4440,8 @@ namespace CapriDesktop
         {
             text = (text ?? "").Trim();
             if (text.Length == 0) return;
+            long developmentInput = 0;
+            if (development != null) development.Invalidate(false);
             StopListening();
             if (modSendDepth == 0 && System.Text.RegularExpressions.Regex.IsMatch(text, @"^(?:stop|cancel)(?: please)?[.!]?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) { StopNativeWork(); StopCrash(); ClonesOff(); return; }
             if (!meeting.Asking)
@@ -4463,6 +4466,7 @@ namespace CapriDesktop
                     return;
                 }
                 Brain.IdentityEvidence(text);
+                if (development != null) developmentInput = development.Input(text, true);
             }
             ModList.LogHearing(text, true);
             Typed();
@@ -4512,11 +4516,11 @@ namespace CapriDesktop
             if (Think == null && Brain.Model == null) { Reply(ticket, text, Offline); FindBrain(); return; }
             Talk.Thinking(text);
             long voiceTicket = fromVoice ? voiceRecovery.Begin() : 0;
-            Ask(ticket, text, 0, voiceTicket);
+            Ask(ticket, text, 0, voiceTicket, developmentInput);
         }
 
         // Her brain answers on the thread pool. A stuck NVIDIA model hands the message to the next one, twice at most, like on Windows.
-        private void Ask(int ticket, string text, int switches, long voiceTicket = 0)
+        private void Ask(int ticket, string text, int switches, long voiceTicket = 0, long developmentInput = 0)
         {
             Func<string, string> think = Think;
             bool follows = FollowUps;
@@ -4551,6 +4555,7 @@ namespace CapriDesktop
                     if (HoldNews(ticket)) return;
                     if (ticket == newsTicket && failed) { Talk.Answer("(updated)", News.Line); selfTools.Replied(ticket); KeepNews(); return; }
                     Reply(ticket, ticket == newsTicket ? "(updated)" : text, said, ticket == newsTicket ? null : after);
+                    if (!failed && ticket != newsTicket && development != null) development.Replied(developmentInput);
                 });
             });
         }

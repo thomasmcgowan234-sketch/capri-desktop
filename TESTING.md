@@ -25,6 +25,7 @@ New companion checks:
 
 ```bash
 dotnet run --project tests/companion/CompanionIdentityChecks.csproj -c Release
+dotnet run --project tests/development/CompanionDevelopmentChecks.csproj -c Release
 python3 tests/voice-state/run.py
 python3 tests/companion-profile/run.py
 dotnet run --project tests/observation/ObservationChecks.csproj -c Release
@@ -34,7 +35,7 @@ dotnet build tests/appearance/AppearanceChecks.csproj -c Release
 bash /workspace/.capri-env/run-x11.sh dotnet run --project /workspace/capri-desktop/tests/appearance/AppearanceChecks.csproj -c Release --no-build
 ```
 
-Appearance needs X11 for Avalonia's PNG backend; it does not open windows or access a live screen/microphone/model. Identity tests compile production source under C# 5. Voice tests extract the actual production interruption class/guards and use synthetic audio levels. Profile checks compile the actual extracted Windows updater with the real profile/startup helpers. Observation tests compile production consent logic; integration checks use the real Cross Brain and a synthetic provider to verify context, model switching, consent and quiet-hour persistence. Backup tests use disposable synthetic private files. Exact final results are in `PROGRESS.md`. Install `xvfb` and `xauth` before the full Linux suite; it runs appearance checks on a disposable display.
+Appearance needs X11 for Avalonia's PNG backend; it does not open windows or access a live screen/microphone/model. Identity and development tests compile actual production modules under C# 5. They cover exact migration backups, proposal provenance/review, cooldown/cap limits, a deterministic idle scheduler, strict responses, privacy/policy/source changes, ignored cancellation and disposal. Voice tests extract the actual production interruption class/guards and use synthetic audio levels. Profile checks compile the actual extracted Windows updater with the real profile/startup helpers. Observation tests compile production consent logic. Integration checks use the real Cross Brain with synthetic providers and loopback fixtures for context, model switching, consent, fixed-budget development transport and quiet-hour persistence. Memory-off tests verify the next provider request without clearing chat and preserve both summary and backlog bytes across blocked completions and off-then-on. Backup tests use disposable synthetic private files. Exact final results are in `PROGRESS.md`. Install `xvfb` and `xauth` before the full Linux suite; it runs appearance checks on a disposable display.
 
 Build/publish and run isolated application smoke:
 
@@ -51,10 +52,12 @@ Publish requires an absolute output directory that does not exist. Smoke uses a 
 From a complete checkout on Windows 11 with the Windows SDK:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\ci\build-windows.ps1 -OutputDirectory .\out\companion-windows -SmokeTest -SmokeSeconds 240
+powershell -ExecutionPolicy Bypass -File .\ci\build-windows.ps1 -OutputDirectory .\out\companion-windows -SmokeTest -SmokeSeconds 900
 ```
 
 This compiles WinForms with .NET Framework 4.8, runs runtime smoke and verifies installer payload consistency. The Cross/Avalonia binary is not the Windows WinForms build.
+
+Checkpoint `b3ad5c6` passed the full native Windows runtime with 1,417 PASS, 0 FAIL and 0 SKIP, plus 53 explicit limits. Silent install/uninstall and package checks passed separately. These results verify that checkpoint, not later automatic-development changes; record a fresh full run for the final revision. The [Windows test build guide](WINDOWS_TEST_BUILD.md) describes artifact verification and target-PC checks.
 
 ## Windows acceptance checklist
 
@@ -64,8 +67,10 @@ Use a fresh synthetic profile, then repeat preservation checks with a backed-up 
 | --- | --- |
 | Launch/isolation | Mainframe/tray/chat work; original Capri/Python companion data unchanged; no upstream executable downloads |
 | Identity | Fresh identity unnamed; propose/review name/preference, restart and retain; assistant repetition cannot establish either |
+| Automatic development | Eight distinct qualifying owner turns, eligible reply and idle period may produce one local tentative draft; inspect its actual source citation, confirm/reject/correct, restart and retain; remote/call/mod/screen inputs cannot supply evidence |
+| Development gates | `/identity development off`, memory off, quiet hours, performance/fullscreen/job/voice activity prevent work; off-then-on/new input/model changes discard stale results; cooldown and three-draft cap hold |
 | Corrections | Correct/reject synthetic memories; obsolete record does not reappear as current certainty after restart |
-| Recovery | Preserve then corrupt/use future schema in synthetic identity file; read-only error, no overwrite; restore known compatible backup |
+| Recovery | Migrate a synthetic schema-1 identity and verify dated/rolling exact backups; corrupt/use future schema and verify read-only behavior; restore known compatible backup and test matching-profile rollback |
 | Models | Local Ollama chat, model switch and restart preserve identity/notes/art; verify exact installed Qwen3.5 9B or alternative tag and tools/images capabilities |
 | Appearance | Reject traversal/oversize/wrong dimensions; import/replace/revert/restart; verify fallback for incomplete strips and licensing |
 | Avatar/display | Show/hide/drag/saved position on dual monitors, 4K/mixed DPI, negative origins, disconnect and animation states |

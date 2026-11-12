@@ -33,6 +33,9 @@
   <ItemGroup>
     <Compile Include="../app/Brain.cs" Link="Shared/Brain.cs" />
     <Compile Include="../app/CompanionIdentity.cs" Link="Shared/CompanionIdentity.cs" />
+    <Compile Include="../app/CompanionPrivacy.cs" Link="Shared/CompanionPrivacy.cs" />
+    <Compile Include="../app/CompanionDevelopment.cs" Link="Shared/CompanionDevelopment.cs" />
+    <Compile Include="../app/CompanionDevelopmentHost.cs" Link="Shared/CompanionDevelopmentHost.cs" />
     <Compile Include="../app/CompanionObservation.cs" Link="Shared/CompanionObservation.cs" />
     <Compile Include="../app/CompanionRoutine.cs" Link="Shared/CompanionRoutine.cs" />
     <Compile Include="../app/CompanionProfile.cs" Link="Shared/CompanionProfile.cs" />

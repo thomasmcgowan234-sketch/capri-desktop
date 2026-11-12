@@ -23,7 +23,7 @@ internal static class Program
     {
         string root = Path.Combine(Path.GetTempPath(), "companion-identity-check-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        try { Run(root); Console.WriteLine("PASS " + passed + " companion identity checks"); return 0; }
+        try { Run(root); DevelopmentChecks(root); Console.WriteLine("PASS " + passed + " companion identity checks"); return 0; }
         catch (Exception error) { Console.Error.WriteLine("FAIL " + error); return 1; }
         finally { Directory.Delete(root, true); }
     }
@@ -109,5 +109,188 @@ internal static class Program
         for (int i = 0; i < CompanionIdentity.MaximumRecords; i++) limited.HandleCommand("/identity remember bounded synthetic item " + i);
         before = File.ReadAllText(Path.Combine(full, "identity.json"));
         Check(limited.HandleCommand("/identity remember one item too many").Contains("full") && before == File.ReadAllText(Path.Combine(full, "identity.json")), "bounded storage refuses overflow without dropping established records");
+        long blockedRevision;
+        Check(!limited.CanDevelop && !limited.TryBeginDevelopment(DateTime.UtcNow, out blockedRevision) && File.ReadAllText(Path.Combine(full, "identity.json")) == before, "automatic development cannot displace a full identity store");
+    }
+
+    private static string LegacyIdentity()
+    {
+        return "  {\"SchemaVersion\":1,\"Revision\":7,\"Records\":[{\"Id\":\"abcdef123456\",\"Category\":\"name\",\"State\":\"established\",\"Text\":\"Cedar\",\"CreatedUtc\":\"2026-10-20T21:04:00.0000000Z\",\"UpdatedUtc\":\"2026-10-20T21:04:00.0000000Z\",\"Evidence\":[{\"Source\":\"owner-confirmation\",\"Text\":\"Owner confirmed Cedar\",\"Utc\":\"2026-10-20T21:04:00.0000000Z\"}]}]}\n";
+    }
+
+    private static void DevelopmentChecks(string root)
+    {
+        DateTime now = DateTime.UtcNow;
+        string migration = Path.Combine(root, "migration");
+        Directory.CreateDirectory(migration);
+        string file = Path.Combine(migration, "identity.json"), legacy = LegacyIdentity();
+        byte[] legacyBytes = new byte[] { 239, 187, 191 }.Concat(System.Text.Encoding.UTF8.GetBytes(legacy)).ToArray();
+        File.WriteAllBytes(file, legacyBytes);
+        CompanionIdentity migrated = new CompanionIdentity(migration);
+        string upgraded = File.ReadAllText(file);
+        Check(migrated.Name == "Cedar" && migrated.Revision == 8 && upgraded.Contains("\"SchemaVersion\":2") && migrated.DevelopmentEnabled, "schema1 upgrades to schema2 without losing the established identity");
+        Check(Directory.GetFiles(migration, "identity.schema1-*.json").Length == 1 && File.ReadAllBytes(Directory.GetFiles(migration, "identity.schema1-*.json")[0]).SequenceEqual(legacyBytes) && File.ReadAllBytes(Path.Combine(migration, "identity.previous.json")).SequenceEqual(legacyBytes), "schema migration preserves byte-identical dated and rolling schema1 backups, including its BOM and whitespace");
+        Check(new CompanionIdentity(migration).Name == "Cedar" && File.ReadAllText(file) == upgraded && Directory.GetFiles(migration, "identity.schema1-*.json").Length == 1, "restarting a migrated identity performs no second migration or write");
+
+        string invalid = Path.Combine(root, "missing-development-policy");
+        Directory.CreateDirectory(invalid);
+        const string missing = "{\"SchemaVersion\":2,\"Revision\":0,\"Records\":[]}";
+        File.WriteAllText(Path.Combine(invalid, "identity.json"), missing);
+        CompanionIdentity missingPolicy = new CompanionIdentity(invalid);
+        long revision;
+        Check(missingPolicy.Status.Contains("read-only") && !missingPolicy.CanDevelop && !missingPolicy.TryBeginDevelopment(now, out revision) && File.ReadAllText(Path.Combine(invalid, "identity.json")) == missing, "schema2 missing required policy data fails read-only without resetting automatic consent");
+        Check(Directory.GetFiles(invalid, "identity.schema1-*.json").Length == 0, "invalid storage creates no misleading migration backup");
+
+        string invalidLegacy = Path.Combine(root, "invalid-legacy-source");
+        Directory.CreateDirectory(invalidLegacy);
+        string fabricatedLegacy = legacy.Replace("owner-confirmation", "model-reflection");
+        File.WriteAllText(Path.Combine(invalidLegacy, "identity.json"), fabricatedLegacy);
+        Check(new CompanionIdentity(invalidLegacy).Status.Contains("read-only") && File.ReadAllText(Path.Combine(invalidLegacy, "identity.json")) == fabricatedLegacy && Directory.GetFiles(invalidLegacy, "identity.schema1-*.json").Length == 0, "invalid legacy provenance cannot be migrated into trusted schema2 state");
+
+        string recovery = Path.Combine(root, "legacy-recovery");
+        CompanionIdentity recoverable = new CompanionIdentity(recovery);
+        recoverable.HandleCommand("/identity remember Keep a valid current snapshot");
+        File.WriteAllText(Path.Combine(recovery, "identity.previous.json"), legacy);
+        File.WriteAllText(Path.Combine(recovery, "identity.json"), "damaged current profile");
+        CompanionIdentity restoring = new CompanionIdentity(recovery);
+        Check(restoring.HandleCommand("/identity restore").StartsWith("Restored", StringComparison.Ordinal) && new CompanionIdentity(recovery).Name == "Cedar" && File.ReadAllText(Path.Combine(recovery, "identity.json")).Contains("\"SchemaVersion\":2"), "explicit recovery safely upgrades a valid schema1 previous snapshot");
+        Check(Directory.GetFiles(recovery, "identity.recovery-*.json").Any(delegate(string saved) { return File.ReadAllText(saved) == "damaged current profile"; }) && Directory.GetFiles(recovery, "identity.schema1-*.json").Any(delegate(string saved) { return File.ReadAllText(saved) == legacy; }) && File.ReadAllText(Path.Combine(recovery, "identity.previous.json")) == legacy, "legacy recovery preserves the damaged current state and both original legacy copies");
+
+        string development = Path.Combine(root, "development");
+        CompanionIdentity automatic = new CompanionIdentity(development);
+        Check(automatic.DevelopmentEnabled && automatic.CanDevelop && !Directory.Exists(development), "automatic development starts enabled without imposing traits or eagerly writing a profile");
+        Check(automatic.TryBeginDevelopment(now, out revision) && automatic.Revision == revision, "development reserves a persistent attempt before calling inference");
+        string attempt = File.ReadAllText(Path.Combine(development, "identity.json"));
+        long unused;
+        Check(!automatic.TryBeginDevelopment(now.AddMinutes(29), out unused) && File.ReadAllText(Path.Combine(development, "identity.json")) == attempt, "cooldown rejects a second attempt without changing stored state");
+        Check(!new CompanionIdentity(development).TryBeginDevelopment(now.AddMinutes(29), out unused), "development cooldown survives a process restart");
+        string status;
+        const string turn = "0123456789abcdef", owner = "We compared observatory telescopes and discussed astronomy.";
+        Check(automatic.TryAddDevelopment(revision, "interest", "Consider astronomy", turn, owner, now.AddSeconds(-1), out status), "automatic reflection saves a tentative interest from an actual captured owner turn");
+        string draft = Id(status), context = automatic.Context("astronomy");
+        Check(context.Contains("model-reflection") && context.Contains("owner statement is a citation") && context.Contains(owner) && context.Contains(turn) && context.Contains("\"ConfirmedByOwner\":false") && automatic.HandleCommand("/identity").Contains("owner-turn " + turn), "model-origin and exact supporting owner citation remain inspectable and unreviewed");
+        Check(new CompanionIdentity(development).Context("astronomy").Contains("tentative") && automatic.Name == "", "automatic ideas survive restart without becoming a chosen name or established identity");
+        string forgedPath = Path.Combine(root, "forged-establishment");
+        Directory.CreateDirectory(forgedPath);
+        string forged = File.ReadAllText(Path.Combine(development, "identity.json")).Replace("\"State\":\"tentative\"", "\"State\":\"established\"");
+        File.WriteAllText(Path.Combine(forgedPath, "identity.json"), forged);
+        Check(new CompanionIdentity(forgedPath).Status.Contains("read-only") && File.ReadAllText(Path.Combine(forgedPath, "identity.json")) == forged, "an automatic draft marked established without owner review fails closed");
+        automatic.HandleCommand("/identity development off");
+        Check(!automatic.CanDevelop && !automatic.DevelopmentEnabled && !new CompanionIdentity(development).DevelopmentEnabled && !automatic.TryBeginDevelopment(now.AddMinutes(30), out unused), "persisted development-off survives restart and blocks automatic attempts");
+        automatic.HandleCommand("/identity development on");
+        Check(automatic.DevelopmentEnabled && !automatic.TryBeginDevelopment(now.AddMinutes(29), out unused), "development off-on cannot reset the persisted inference cooldown");
+        Check(automatic.TryBeginDevelopment(now.AddMinutes(30), out revision), "a new attempt is available at the exact cooldown boundary");
+        attempt = File.ReadAllText(Path.Combine(development, "identity.json"));
+        Check(!automatic.TryAddDevelopment(revision, "interest", " consider   ASTRONOMY ", turn, owner, now, out status) && File.ReadAllText(Path.Combine(development, "identity.json")) == attempt, "case and whitespace repetition adds no evidence or duplicate draft");
+        automatic.HandleCommand("/identity reject " + draft);
+        automatic.TryBeginDevelopment(now.AddMinutes(60), out revision);
+        Check(!automatic.TryAddDevelopment(revision, "interest", "Consider astronomy", turn, owner, now, out status) && !automatic.Context("astronomy").Contains("Consider astronomy"), "a later automatic result cannot resurrect a rejected claim");
+        automatic.TryBeginDevelopment(now.AddMinutes(90), out revision);
+        Check(!automatic.TryAddDevelopment(revision, "memory", "We visited an observatory", turn, owner, now, out status) && !automatic.TryAddDevelopment(revision, "opinion", "Consider collaborative puzzles", turn, owner, now, out status), "automatic reflection cannot invent factual memories or reuse a consumed attempt");
+        automatic.TryBeginDevelopment(now.AddMinutes(120), out revision);
+        Check(!automatic.TryAddDevelopment(revision, "interest", "Consider astronomy", turn, "My password is synthetic-secret", now, out status), "automatic provenance rejects credential-bearing owner turns");
+        automatic.TryBeginDevelopment(now.AddMinutes(150), out revision);
+        Check(!automatic.TryAddDevelopment(revision, "interest", "Explore orbital mechanics", "model supplied arbitrary citation", owner, now, out status), "automatic provenance requires a captured-format turn identifier");
+        automatic.TryBeginDevelopment(now.AddMinutes(180), out revision);
+        Check(!automatic.TryAddDevelopment(revision, "interest", "Explore orbital mechanics", turn, owner, now.AddMinutes(181), out status), "an automatic result cannot cite an owner turn from after its inference snapshot");
+        Check(automatic.TryBeginDevelopment(now.AddMinutes(210), out revision) && !automatic.TryAddDevelopment(revision, "preference", "Consider astronomy", turn, owner, now, out status), "changing category cannot resurrect an already rejected automatic claim");
+        automatic.Enabled = false;
+        attempt = File.ReadAllText(Path.Combine(development, "identity.json"));
+        Check(!automatic.CanDevelop && !automatic.TryBeginDevelopment(now.AddMinutes(240), out revision) && automatic.HandleCommand("/identity development off").Contains("paused") && File.ReadAllText(Path.Combine(development, "identity.json")) == attempt, "memory privacy pause blocks development attempts and setting mutations");
+
+        string namedPath = Path.Combine(root, "named-development");
+        CompanionIdentity named = new CompanionIdentity(namedPath);
+        named.TryBeginDevelopment(now, out revision);
+        named.TryAddDevelopment(revision, "name", "Rowan", turn, owner, now.AddSeconds(-1), out status);
+        string name = Id(status);
+        Check(named.Name == "" && named.Context("name").Contains("\"ConfirmedByOwner\":false"), "an automatically proposed name stays tentative until the owner chooses it");
+        named.HandleCommand("/identity confirm " + name);
+        named.TryBeginDevelopment(now.AddMinutes(30), out revision);
+        Check(!named.TryAddDevelopment(revision, "name", "Vex", turn, owner, now.AddSeconds(-1), out status) && named.Name == "Rowan" && new CompanionIdentity(namedPath).Name == "Rowan", "automatic name suggestions cannot reinvent an owner-chosen persistent identity");
+
+        string pausedPath = Path.Combine(root, "paused-development");
+        CompanionIdentity paused = new CompanionIdentity(pausedPath);
+        paused.TryBeginDevelopment(now, out revision);
+        attempt = File.ReadAllText(Path.Combine(pausedPath, "identity.json"));
+        paused.Enabled = false;
+        Check(!paused.TryAddDevelopment(revision, "interest", "Explore astronomy", turn, owner, now.AddSeconds(-1), out status) && File.ReadAllText(Path.Combine(pausedPath, "identity.json")) == attempt, "privacy pause prevents an already-reserved automatic result from persisting");
+
+        string stalePath = Path.Combine(root, "stale-development");
+        CompanionIdentity stale = new CompanionIdentity(stalePath);
+        stale.TryBeginDevelopment(now, out revision);
+        stale.HandleCommand("/identity remember The owner made a new decision");
+        Check(!stale.TryAddDevelopment(revision, "interest", "Explore astronomy", turn, owner, now.AddSeconds(-1), out status), "an owner edit invalidates an in-flight automatic revision");
+        stale.TryBeginDevelopment(now.AddMinutes(30), out revision);
+        string staleFile = Path.Combine(stalePath, "identity.json"), external = File.ReadAllText(Path.Combine(stalePath, "identity.json")) + " ";
+        File.WriteAllText(staleFile, external);
+        Check(!stale.TryAddDevelopment(revision, "interest", "Explore astronomy", turn, owner, now, out status) && status.Contains("changed outside this session") && File.ReadAllText(staleFile) == external, "an automatic result never overwrites an external profile correction");
+
+        string reviewPath = Path.Combine(root, "review-development");
+        CompanionIdentity reviewed = new CompanionIdentity(reviewPath);
+        reviewed.TryBeginDevelopment(now, out revision);
+        reviewed.TryAddDevelopment(revision, "opinion", "Consider collaborative puzzles", turn, owner, now.AddSeconds(-1), out status);
+        string reviewedId = Id(status);
+        reviewed.HandleCommand("/identity confirm " + reviewedId);
+        for (int i = 0; i < 12; i++) reviewed.HandleCommand("/identity correct " + reviewedId + ": Prefer evidence-based puzzle discussion " + i);
+        context = new CompanionIdentity(reviewPath).Context("puzzles");
+        Check(context.Contains("\"ConfirmedByOwner\":true") && context.Contains("model-reflection") && context.Contains(owner) && context.Contains(turn) && reviewed.HandleCommand("/identity").Contains(owner), "owner review establishes a draft while repeated corrections preserve both original provenance entries");
+        reviewed.TryBeginDevelopment(now.AddMinutes(30), out revision);
+        Check(!reviewed.TryAddDevelopment(revision, "opinion", "Consider collaborative puzzles", turn, owner, now, out status), "owner-corrected original model claims cannot reappear as a new automatic draft");
+
+        string cappedPath = Path.Combine(root, "capped-development");
+        CompanionIdentity capped = new CompanionIdentity(cappedPath);
+        string first = "";
+        for (int i = 0; i < 3; i++)
+        {
+            Check(capped.TryBeginDevelopment(now.AddMinutes(i * 30), out revision) && capped.TryAddDevelopment(revision, "interest", "Synthetic developing interest " + i, turn, owner, now.AddSeconds(-1), out status), "bounded automatic attempt creates one tentative draft");
+            if (i == 0) first = Id(status);
+        }
+        attempt = File.ReadAllText(Path.Combine(cappedPath, "identity.json"));
+        Check(!capped.CanDevelop && !capped.TryBeginDevelopment(now.AddMinutes(90), out revision) && File.ReadAllText(Path.Combine(cappedPath, "identity.json")) == attempt, "three pending drafts stop further inference reservations without deleting records");
+        capped.HandleCommand("/identity confirm " + first);
+        Check(capped.CanDevelop && capped.TryBeginDevelopment(now.AddMinutes(90), out revision), "owner review frees a pending slot while preserving the cooldown");
+        Check(!CompanionIdentity.SafeDevelopmentText("email.person@example.com") && !CompanionIdentity.SafeDevelopmentText(new string('x', 601)) && !CompanionIdentity.SafeDevelopmentText("hidden\ncontrol") && CompanionIdentity.SafeDevelopmentText(owner), "development evidence safety bounds reject private, oversized and control-bearing text");
+        DevelopmentPrivacyChecks(root, now);
+    }
+
+    private static void DevelopmentPrivacyChecks(string root, DateTime now)
+    {
+        string[] privateTurns =
+        {
+            "I live at 14 Carrington Street.",
+            "Meet by 14 Carrington Street.",
+            "My school is called Hillcrest High.",
+            "My full name is Morgan Example.",
+            "My date of birth is 12/03/2001.",
+            "Call 0412345678 after our telescope discussion."
+        };
+        Check(privateTurns.All(delegate(string text) { return !CompanionIdentity.SafeDevelopmentText(text); }),
+            "automatic privacy uses the existing memory classifier for literal addresses, school, full name, birth date and phone text");
+        const string benign = "We compared orbital mechanics and telescope designs.", turn = "fedcba9876543210";
+        Check(CompanionIdentity.SafeDevelopmentText(benign) && CompanionIdentity.SafeDevelopmentText("Could your companion name be Rowan?"),
+            "automatic privacy still permits ordinary astronomy and companion-name conversation");
+        string automaticPath = Path.Combine(root, "private-development");
+        CompanionIdentity automatic = new CompanionIdentity(automaticPath);
+        int attempts = 0;
+        foreach (string privateTurn in privateTurns)
+        {
+            long revision;
+            string status;
+            if (!automatic.TryBeginDevelopment(now.AddMinutes(30 * attempts++), out revision)) throw new Exception("Privacy fixture could not reserve an evidence attempt.");
+            string before = File.ReadAllText(Path.Combine(automaticPath, "identity.json"));
+            Check(!automatic.TryAddDevelopment(revision, "interest", "Explore telescope construction", turn, privateTurn, now.AddSeconds(-1), out status)
+                && File.ReadAllText(Path.Combine(automaticPath, "identity.json")) == before,
+                "automatic owner-turn citation with private contact or location data is rejected without a file write");
+            if (!automatic.TryBeginDevelopment(now.AddMinutes(30 * attempts++), out revision)) throw new Exception("Privacy fixture could not reserve a claim attempt.");
+            before = File.ReadAllText(Path.Combine(automaticPath, "identity.json"));
+            Check(!automatic.TryAddDevelopment(revision, "opinion", privateTurn, turn, benign, now.AddSeconds(-1), out status)
+                && File.ReadAllText(Path.Combine(automaticPath, "identity.json")) == before,
+                "automatic model claim with private contact or location data is rejected without a file write");
+        }
+        string explicitPath = Path.Combine(root, "explicit-private-memory");
+        CompanionIdentity explicitOwner = new CompanionIdentity(explicitPath);
+        explicitOwner.HandleCommand("/identity remember Meet by 14 Carrington Street.");
+        Check(new CompanionIdentity(explicitPath).Context("Carrington").Contains("14 Carrington Street"),
+            "automatic privacy filtering does not silently rewrite existing explicit-owner memory behavior");
     }
 }

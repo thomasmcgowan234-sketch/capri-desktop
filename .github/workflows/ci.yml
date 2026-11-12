@@ -31,6 +31,15 @@ jobs:
         run: |
           $env:CAPRI_DISPOSABLE_USER = '1'
           ./ci/test-package-marker.ps1 -Setup out/windows/Capri-Setup.exe
+      - uses: actions/setup-python@v6
+        if: success()
+        with:
+          python-version: '3.13'
+      - name: Package companion test build
+        if: success()
+        shell: pwsh
+        run: |
+          python ./ci/package-companion.py --windows out/windows/Capri.exe --windows-smoke out/windows/smoke/runtime/smoke-test.txt --windows-smoke-run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output out/companion-test-build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -51,6 +60,16 @@ jobs:
             UPDATE_GUIDE.md
             PRIVACY.md
           if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: companion-test-build
+          path: |
+            out/companion-test-build/*.zip
+            out/companion-test-build/RELEASE.json
+            out/companion-test-build/SHA256SUMS
+            out/companion-test-build/validation/
+          if-no-files-found: error
 
   # Her silent install and uninstall change the runner's own Capri, so they get a fresh runner of their own.
   windows-setup:

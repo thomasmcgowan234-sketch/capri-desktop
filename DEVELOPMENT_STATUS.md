@@ -8,6 +8,8 @@ This is a development release. Source-level integration and Linux automated vali
 
 - Original, initially unnamed conversational behavior replaces compulsory Cyberpunk biography and fixed tastes.
 - Structured persistent identity and evidenced-memory records, tentative proposals and explicit direct-user review/correction/recovery commands.
+- Automatic local personality proposals from bounded authenticated owner conversation, with source citations, review, cooldowns and privacy/resource gates.
+- Identity schema 2 with preserved schema-1 migration snapshots, persistent development controls and stale-result protection.
 - Isolated companion profile and program directories, with production upstream executable updates blocked to protect fork changes.
 - Transactional skin replacement with archived prior packages and Revert in the existing Mods interface.
 - Expiring observation leases, separate remote image consent, persistent quiet hours and verified offline full-profile backup/restore tooling.
@@ -24,8 +26,8 @@ Capri's Mainframe, desktop sprite/drag/show-hide behavior, local Ollama and othe
 
 | Requirement | Current limit / next work |
 | --- | --- |
-| Windows launch/install | Both SDK cross-build and native Windows CI build pass; silent install/uninstall with data preservation passes on Windows CI. Runtime smoke and target-PC acceptance are recorded separately in PROGRESS.md |
-| Natural identity growth | Reviewed explicit commands provide a conservative durable path; automatic evidence extraction/reflection and rich journal UI require further development |
+| Windows launch/install | Privacy checkpoint `b3ad5c6` passed native runtime smoke (1,417 PASS, 0 FAIL, 0 SKIP; 53 explicit limits), installer/payload and silent install/uninstall checks. Automatic-development integration requires its own final CI result in PROGRESS.md; target-PC acceptance remains separate |
+| Natural identity growth | Bounded local reflection now creates cited tentative proposals after direct conversation; only owner review establishes them. Focused schema/coordinator checks pass. Rich journal UI and model-quality/long-session acceptance remain |
 | Complete original appearance | Current art is the licensed temporary Capri appearance; import a complete compatible sprite set for full replacement |
 | Physical voice/Discord | Echo cancellation, device routing, interruptions and real call participation need Windows audio/hardware tests |
 | Observation permissions | Verify every capture and tool path with the Windows checklist; inherited features must be exercised under revocation and prompt injection |
@@ -38,10 +40,10 @@ Capri's Mainframe, desktop sprite/drag/show-hide behavior, local Ollama and othe
 
 ## Next acceptance sequence
 
-1. Run the native Windows build and runtime/installer smoke checks with a synthetic companion profile. Check that original Capri and the previous companion remain unchanged.
+1. Finish the current revision's full native runtime/installer validation and use the resulting [Windows test build](WINDOWS_TEST_BUILD.md). Keep original Capri and the previous companion unchanged.
 2. Configure a local Ollama model; confirm the exact installed tag and image/tool capability instead of assuming the requested model supports all paths.
-3. Exercise identity proposal/review/correction/restart/recovery, appearance replacement/revert and interrupted-update recovery.
+3. Exercise automatic draft generation and its off/quiet/performance gates, direct review/correction, schema-1 migration, restart/recovery, appearance replacement/revert and interrupted-update recovery.
 4. Run physical audio, call-origin, observation revocation, dual-monitor/mixed-DPI and low-resource acceptance checks in [TESTING.md](TESTING.md).
 5. Record actual CPU/RAM/VRAM and latency, then address measured regressions before adding more background autonomy.
 
-Automated evidence: full `ci/check-linux.sh` passes; isolated self-contained application smoke passes 248 checks; C#5/net48 SDK Windows compilation passes (12 inherited warnings, zero errors). Cross build has four inherited warnings. No live model, physical audio/Discord, Windows desktop, AMD GPU or dual-monitor test was performed.
+The privacy-repair checkpoint has full Linux regression/application-smoke and native Windows runtime/installer evidence. Current automatic-development work has 65 C#5 identity checks, 59 C#5 coordinator checks and a successful C#5/net48 SDK compile (12 inherited warnings, zero errors); final integrated counts and CI results belong in `PROGRESS.md`. Cross build has four inherited warnings. No live Qwen3.5/Ollama setup, physical audio/Discord, AMD GPU or dual-monitor acceptance has been performed.
