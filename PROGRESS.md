@@ -30,3 +30,7 @@ The designated projectless `/codex/.../output` directory is not writable in this
 3. Complete dual-monitor/DPI and measured gaming CPU/RAM/VRAM/frame-time checks from TESTING.md.
 4. Build on reviewed identity commands for optional bounded automatic proposal extraction/reflection and a journal UI. No automatic personality development model loop is claimed in this release.
 5. Review large inherited controllers incrementally; preserve working components and explicit trust/data boundaries. Do not restart or redo completed investigation.
+
+## Saved branch and packaging
+
+The development branch was pushed successfully to `https://github.com/thomasmcgowan234-sketch/capri-desktop/tree/companion/persistent-identity`; main is unchanged. `ci/package-companion.py` creates source/Windows/Linux archives with notices, release provenance and checksums without publishing a release. Windows PE metadata has IL-only AnyCPU flags with neither 32-bit-required nor prefer-32-bit set.

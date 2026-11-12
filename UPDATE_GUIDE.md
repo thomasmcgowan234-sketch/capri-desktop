@@ -71,3 +71,13 @@ python .\tools\companion_backup.py restore "D:\CompanionBackups\before-update.zi
 ```
 
 The destination archive must not already exist. Backup records per-file SHA-256, verifies captured bytes and publishes without overwriting an older backup. Restore checks version, paths, sizes, duplicates and hashes, re-verifies staged files, and refuses existing target profiles. To recover the active profile, close the app, rename/preserve its current `data` directory, then move verified `recovered-data` into its place. Backups contain credentials and personal records in plaintext; store them privately. Symlinked/external vaults are deliberately excluded and must be backed up separately. Windows DPAPI keys remain bound to the original account.
+
+## Package an accepted source snapshot
+
+With clean committed source and completed builds, run:
+
+```bash
+python3 ci/package-companion.py --windows ci/bin/Release/net48/Capri.exe --linux /absolute/linux-publish-directory --output /absolute/new-release-directory
+```
+
+The optional Linux argument can be omitted. The script packages the Windows app/installer, required notices and guides, committed source ZIP, optional Linux runtime, release provenance and SHA-256 sums. It performs no upload or publication. Build checksums are integrity evidence, not a code-signing certificate. Keep the Windows-acceptance limitation in the manifest until real Windows checks have been recorded.
