@@ -227,6 +227,10 @@ namespace CapriDesktop
             string note = pet.updateNote, page = pet.updatePage;
             var item = pet.updateItem;
             int at = item == null ? -1 : pet.ContextMenu.Items.IndexOf(item);
+            // These fixtures drive the same action queue with explicit finished=false/
+            // true ticks. Dispatcher pumping must not also advance its live frame clock.
+            bool selfClockWasRunning = pet.frames.IsEnabled;
+            pet.frames.Stop();
             try
             {
                 int opens = 0;
@@ -283,7 +287,7 @@ namespace CapriDesktop
                     pet.Ask(ticket, "(updated)", 0);
                     var replyWait = System.Diagnostics.Stopwatch.StartNew();
                     while (pet.Talk.Reply == null && replyWait.ElapsedMilliseconds < 3000) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(5); }
-                    if (pet.Talk.Reply != News.Line || pet.asking != ticket) throw new Exception("A held fallback reply lost its quit line.");
+                    if (pet.Talk.Reply != News.Line || pet.asking != ticket) throw new Exception("A held fallback reply lost its quit line: reply=" + (pet.Talk.Reply ?? "<null>") + ", asking=" + pet.asking + ", ticket=" + ticket + ".");
                     pet.selfTools.Tick(ticket, false);
                     if (closed) throw new Exception("A fallback quit skipped its line.");
                     pet.selfTools.Tick(ticket, true);
@@ -324,6 +328,7 @@ namespace CapriDesktop
                 pet.updateItem = item;
                 if (at >= 0) pet.ContextMenu.Items.Insert(Math.Min(at, pet.ContextMenu.Items.Count), item);
                 pet.updateNote = note; pet.updatePage = page; pet.UpdateNews = news; pet.Saved.UpdateSeen = seen;
+                if (selfClockWasRunning) pet.frames.Start();
             }
 
             if (SelfJobs.Control(new ToolArguments { Action = "status" }) != "I'm not on a job right now." || SelfJobs.Control(new ToolArguments { Action = "change", Task = "new task" }) != "I'm not on a job right now.") throw new Exception("Job control invented a running job.");
