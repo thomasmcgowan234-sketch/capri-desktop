@@ -71,7 +71,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Native Linux dependencies
-        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends libwayland-dev libxkbcommon-dev libxcb1-dev pkg-config
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends libwayland-dev libxkbcommon-dev libxcb1-dev pkg-config xvfb xauth libfontconfig1
       - name: Focused Linux checks
         run: bash ci/check-linux.sh
       - name: Build
@@ -84,7 +84,7 @@ jobs:
       - name: Smoke test
         timeout-minutes: 5
         run: |
-          xvfb-run -a -s "-screen 0 1920x1080x24" bash -c 'openbox & sleep 2; xcompmgr & sleep 1; out/linux/Capri --smoke "$PWD/smoke/linux"' || true
+          xvfb-run -a -s "-screen 0 1920x1080x24" bash -c 'openbox & sleep 2; xcompmgr & sleep 1; out/linux/Capri --smoke "$PWD/smoke/linux"'
           cat smoke/linux/smoke-test.txt
           if grep -q '^FAIL' smoke/linux/smoke-test.txt; then exit 1; fi
           test "$(grep -c '^PASS' smoke/linux/smoke-test.txt)" -ge 20
@@ -107,7 +107,7 @@ jobs:
       - name: Smoke test
         timeout-minutes: 8
         run: |
-          out/mac/Capri --smoke "$PWD/smoke/mac" || true
+          out/mac/Capri --smoke "$PWD/smoke/mac"
           cat smoke/mac/smoke-test.txt
           if grep -q '^FAIL' smoke/mac/smoke-test.txt; then exit 1; fi
           test "$(grep -c '^PASS' smoke/mac/smoke-test.txt)" -ge 20

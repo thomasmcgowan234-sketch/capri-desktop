@@ -486,8 +486,8 @@ namespace CapriDesktop
         // Cyberpunk 2077 starting, or a Night City song coming on, is home for her, like on Windows: she cheers once, then waits
         // two hours before cheering for the same again. Check in on me off stops it.
         internal const double HomeGap = 7200;
-        internal static readonly string[] HomeGameLines = { "Night City?! You're taking me home, choom.", "Ooh, Cyberpunk. Go wreck some corpos for me.", "[SIGNAL CORRUPTED] ...wait. I know that skyline." };
-        internal static readonly string[] HomeSongLines = { "Wait, that's Night City. Turn it up.", "Ooh, my soundtrack. Preem taste.", "Now that's music. You're learning." };
+        internal static readonly string[] HomeGameLines = { "Cyberpunk is starting. What are you planning to do?", "Back in the city. Where did we leave off?", "Ready for another session?" };
+        internal static readonly string[] HomeSongLines = { "That soundtrack is playing again.", "Do you have a favourite track?", "That song came back around." };
         private bool homeBusy, homeGame, homeSong;
         private double homeAt = -HomeGap, gameCheered = -HomeGap, songCheered = -HomeGap;
         // A computer stuck near full CPU for about a minute gets a joke from her, at most once every half hour and never over a
@@ -501,7 +501,7 @@ namespace CapriDesktop
         // they're at the computer, she comes over near the mouse and asks. Noticing her gets a happy line; 20 s of nothing gets a
         // sulk and twice the wait, up to 8 hours.
         internal const double NudgeGap = 7200;
-        internal static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "I'm bored. Entertain me.", "Hey. Hey. Look at me.", "You've been ignoring me for ages. Rude.", "Pay attention to me or I start clicking things.", "Knock knock. It's your favourite gremlin.", "Choom. I'm bored out of my many minds." };
+        internal static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "What has your attention today?", "Hey. Hey. Look at me.", "I can wait until you have a moment.", "I can stay quiet while you focus.", "Knock knock. It's your favourite gremlin.", "Anything interesting happen since we last talked?" };
         internal static readonly string[] NoticedLines = { "Finally. Hi.", "There you are.", "Knew you couldn't resist me." };
         internal static readonly string[] SnubbedLines = { "Fine. Ignore me. See if I care.", "Wow. Ignored. Noted.", "I'll just sit here. Alone. Bored." };
         private const string NudgeHeard = "(wants attention)";
@@ -670,6 +670,7 @@ namespace CapriDesktop
             if (Program.Smoke == null)
             {
                 Brain.Identity = new CompanionIdentity(Path.Combine(folder, "companion"));
+                Brain.Routine = new CompanionRoutine(Path.Combine(folder, "companion"));
                 CompanionObservation.Configure();
             }
             // Remember our chats, like on Windows: every chat goes in a daily transcript, and the brain they picked folds older
@@ -1054,8 +1055,11 @@ namespace CapriDesktop
             if (!quiet) Sfx.Play(Cue.Arrive);
         }
 
+        private bool BackgroundPaused { get { return Brain.Routine != null && Brain.Routine.Paused; } }
+
         private void Tick()
         {
+            frames.Interval = TimeSpan.FromMilliseconds(Brain.Routine != null && Brain.Routine.LowResource ? 100 : 33);
             double now = Now;
             TickClones();
             Desk.BindScreens(Screens.All);
@@ -1078,7 +1082,7 @@ namespace CapriDesktop
             if (away && !IsVisible)
             {
                 Talk.Gone();
-                if (now >= nextCheck && Program.Smoke == null) { nextCheck = now + 0.25; CheckPopIn(now); }
+                if (now >= nextCheck && Program.Smoke == null) { nextCheck = now + (Brain.Routine != null && Brain.Routine.LowResource ? 1 : 0.25); CheckPopIn(now); }
                 if (smoke != null) smoke.Tick(now);
                 return;
             }
@@ -1091,7 +1095,7 @@ namespace CapriDesktop
             if (walking && !pressed) Walk(now);
             if (now >= nextCheck && !away && !pressed)
             {
-                nextCheck = now + 0.25;
+                nextCheck = now + (Brain.Routine != null && Brain.Routine.LowResource ? 1 : 0.25);
                 CheckSeat(now);
                 CheckWander(now);
                 CheckMusic(now);
@@ -1127,7 +1131,7 @@ namespace CapriDesktop
 
         // "Check my screen": her brain looks at a screenshot when they ask, like on Windows. Watch my screen's glances are below.
         // Screenshots here show her and her bubble too, which aren't part of their screen.
-        internal const string LookAsk = "Describe what's on this screen in two or three plain sentences: what kind of game or app it is (name it only if the name is on screen), what's happening, and any text or numbers that matter. Don't guess who a person is from their face; name someone only if their name is written on screen. The small red-haired anime girl with a speech bubble is Capri, the desktop companion, not part of their screen, so leave her out.";
+        internal const string LookAsk = "Describe what's on this screen in two or three plain sentences: what kind of game or app it is (name it only if the name is on screen), what's happening, and any text or numbers that matter. Don't guess who a person is from their face; name someone only if their name is written on screen. The desktop companion avatar and its speech bubble are overlays, not part of the observed application, so leave her out.";
 
         private string LookAt(string focus) { return RequestedVision.Run(Brain, new ToolArguments { Focus = focus }); }
 
@@ -3969,7 +3973,7 @@ namespace CapriDesktop
             });
         }
 
-        private bool CanPop { get { return !quitting && !dragging && !pressed && !falling && outro == null && popOut < 0 && nudgeOut < 0 && Talk.Quiet && (ContextMenu == null || !ContextMenu.IsOpen); } }
+        private bool CanPop { get { return !BackgroundPaused && !quitting && !dragging && !pressed && !falling && outro == null && popOut < 0 && nudgeOut < 0 && Talk.Quiet && (ContextMenu == null || !ContextMenu.IsOpen); } }
 
         // She glitches out if she's showing, then in at a random spot along the top of her screen, says hi and drops onto a window.
         internal void PopIn()
@@ -4024,6 +4028,7 @@ namespace CapriDesktop
 
         private void CheckHome(double now)
         {
+            if (BackgroundPaused || !Brain.IdentityInterested("Cyberpunk")) return;
             if (Saved.NoCheckIns || homeBusy || now - homeAt < 15) return;
             homeBusy = true;
             homeAt = now;
@@ -4101,6 +4106,7 @@ namespace CapriDesktop
 
         internal void CheckNudge(double now)
         {
+            if (BackgroundPaused) return;
             bool attending = clicks != noticedClicks || asking != noticedAsked || petTicket != noticedPets || dragging || pressed || Talk.Typing || (ContextMenu != null && ContextMenu.IsOpen);
             if (noticed < 0 || attending) { noticed = now; noticedClicks = clicks; noticedAsked = asking; noticedPets = petTicket; }
             if (nudgeOut >= 0)
@@ -4249,7 +4255,7 @@ namespace CapriDesktop
 
         private void CheckGlance(double now)
         {
-            if (!Saved.Watch || glancing || Hushed) return;
+            if (BackgroundPaused || !CompanionObservation.Allowed || !Saved.Watch || glancing || Hushed) return;
             if (nextGlance < 0) nextGlance = now + Math.Min(20, GlanceGap);
             if (now < nextGlance || Brain.Model == null || away || dragging || pressed || !Talk.Quiet) return;
             nextGlance = now + GlanceGap * (0.8 + random.NextDouble() * 0.4);
@@ -4328,7 +4334,7 @@ namespace CapriDesktop
             glanceFailed = null;
             if (string.IsNullOrEmpty(said)) { Glimpsed(saw); return; }
             // Quiet going on while she looked drops the line too, like on Windows.
-            if (ticket != asking || away || Hushed || dragging || !Talk.Quiet) { lastPrint = null; Glimpsed(saw); return; }
+            if (BackgroundPaused || !CompanionObservation.Allowed || ticket != asking || away || Hushed || dragging || !Talk.Quiet) { lastPrint = null; Glimpsed(saw); return; }
             // A line about something she already brought up is dropped like a SKIP, so the same scene waits before she tries again.
             if (Glances.Repeats(said, RecentGlances(Now), Brain.Nickname)) { Glimpsed(saw); return; }
             glanced.Add(Tuple.Create(Now, said));

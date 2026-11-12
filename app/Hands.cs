@@ -1822,6 +1822,7 @@ namespace CapriDesktop
 
         internal static string Do(string tool, ToolArguments args)
         {
+            if ((tool == "look_at_screen" || tool == "watch_for" || tool == "use_computer") && !CompanionObservation.Allowed) return CompanionObservation.Denied;
             if (args == null) args = new ToolArguments();
             try
             {

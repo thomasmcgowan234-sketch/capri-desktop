@@ -1767,13 +1767,13 @@ namespace CapriDesktop
         private double nudgeGap = NudgeGap;
         private double nudgeOut = -1;
         private bool boredAsk;
-        private static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "I'm bored. Entertain me.", "Hey. Hey. Look at me.", "You've been ignoring me for ages. Rude.", "Pay attention to me or I start clicking things.", "Knock knock. It's your favourite gremlin.", "Choom. I'm bored out of my many minds.", "One of my minds says you've forgotten me. The rest agree.", "I've counted your desktop icons twice now.", "This is me being patient. It's going badly." };
+        private static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "What has your attention today?", "Hey. Hey. Look at me.", "I can wait until you have a moment.", "I can stay quiet while you focus.", "Knock knock. It's your favourite gremlin.", "Anything interesting happen since we last talked?", "Did you want to pick up our earlier conversation?", "I've counted your desktop icons twice now.", "This is me being patient. It's going badly." };
         private static readonly string[] NoticedLines = { "Finally. Hi.", "There you are.", "Knew you couldn't resist me.", "Oh good, you're alive.", "Took you long enough." };
         private static readonly string[] SnubbedLines = { "Fine. Ignore me. See if I care.", "Wow. Ignored. Noted.", "I'll just sit here. Alone. Bored.", "Cool. Cool cool cool.", "Remembering this for later." };
         // Cyberpunk 2077 starting, or a Night City song coming on, is home for her: she cheers once, then waits two hours before cheering for the same again.
         private const double HomeGap = 7200;
-        private static readonly string[] HomeGameLines = { "Night City?! You're taking me home, choom.", "Ooh, Cyberpunk. Go wreck some corpos for me.", "[SIGNAL CORRUPTED] ...wait. I know that skyline." };
-        private static readonly string[] HomeSongLines = { "Wait, that's Night City. Turn it up.", "Ooh, my soundtrack. Preem taste.", "Now that's music. You're learning." };
+        private static readonly string[] HomeGameLines = { "Cyberpunk is starting. What are you planning to do?", "Back in the city. Where did we leave off?", "Ready for another session?" };
+        private static readonly string[] HomeSongLines = { "That soundtrack is playing again.", "Do you have a favourite track?", "That song came back around." };
         private bool homeBusy, homeGame, homeSong;
         private double homeAt = -HomeGap, gameCheered = -HomeGap, songCheered = -HomeGap;
         // A PC stuck near full CPU for about a minute gets a joke from her, at most once every half hour, and never over a full-screen game (Zenni's idea).
@@ -2415,9 +2415,11 @@ namespace CapriDesktop
             Brain.MemoryPath = Path.Combine(data, "me.md");
             // personality.md is made only when they press Edit, so an old one from 0.7.4 or 0.7.5 is read as it is.
             Brain.PersonalityPath = Path.Combine(data, Brain.PersonalityName);
+            if (smoke) CompanionObservation.Command("/observe start cloud"); // Synthetic runtime fixtures explicitly authorize capture.
             if (!smoke)
             {
                 Brain.Identity = new CompanionIdentity(Path.Combine(data, "companion"));
+                Brain.Routine = new CompanionRoutine(Path.Combine(data, "companion"));
                 CompanionObservation.Configure();
                 Brain.BackgroundPaused = delegate { return BackgroundPaused; };
             }
@@ -2450,8 +2452,10 @@ namespace CapriDesktop
             if (careNew) preferences.CareWritten = careLines.Create();
             care = new Care(delegate { return clock.Elapsed.TotalSeconds; }, delegate { return DateTime.Now; }, careLines.Pick);
             // SECURITY: their toggles, with "Hey Capri" kept in its own setting for her wake word.
+            // Set the new fork's default before the legacy migration supplies Trusted.
+            if (!smoke && preferences.Permissions == null && !preferences.Bypass) preferences.Permissions = Security.Of(Security.Guarded);
             Migrate(preferences);
-            Security.Load(!smoke && preferences.Permissions == null ? Security.Of(Security.Guarded) : preferences.Permissions);
+            Security.Load(preferences.Permissions);
             Security.HeyOn = delegate { return preferences.HeyCapri; };
             Security.SetHey = SetHeyCapri;
             Security.Changed = SecurityChanged;
@@ -7472,7 +7476,7 @@ namespace CapriDesktop
 
         // Always is the explicit low-resource mode. In games retains the existing optional game commentary behavior.
         // Direct conversations, voice, requested jobs and reminders remain available; background inference pauses.
-        internal bool BackgroundPaused { get { return preferences.PowerSaver == 2; } }
+        internal bool BackgroundPaused { get { return preferences.PowerSaver == 2 || Brain.Routine != null && Brain.Routine.Paused; } }
 
         // Her quarter-second signals' ticks: while Power saver works, her background checks run on every 4th, once a second.
         internal const int SaverEvery = 4;
@@ -7574,6 +7578,7 @@ namespace CapriDesktop
 
         private void CheckHome(double now)
         {
+            if (BackgroundPaused || !Brain.IdentityInterested("Cyberpunk")) return;
             if (homeBusy || now - homeAt < 15) return;
             homeBusy = true;
             homeAt = now;
@@ -9158,7 +9163,7 @@ namespace CapriDesktop
         private void CheckGlance(double now, long quiet, bool awayLook = false)
         {
             if (exploring && !awayLook) return;
-            if (BackgroundPaused || (!preferences.Watch && !exploring) || glancing || Hushed || watchAlong != null) return;
+            if (BackgroundPaused || !CompanionObservation.Allowed || (!preferences.Watch && !exploring) || glancing || Hushed || watchAlong != null) return;
             double wait = brain.ScreenWait;
             if (wait > 0) { nextGlance = Math.Max(nextGlance, now + wait); return; }
             if (nextGlance < 0) nextGlance = now + Math.Min(20, GlanceGap);
@@ -14084,7 +14089,7 @@ namespace CapriDesktop
                 if (text.Equals("/performance on", StringComparison.OrdinalIgnoreCase) || text.Equals("/performance off", StringComparison.OrdinalIgnoreCase))
                 {
                     SetPowerSaver(text.EndsWith(" on", StringComparison.OrdinalIgnoreCase) ? 2 : 0);
-                    companion = BackgroundPaused ? "Performance mode on: autonomous inference is paused; direct conversation remains available." : "Performance mode off.";
+                    companion = preferences.PowerSaver == 2 ? "Performance mode on: autonomous inference is paused; direct conversation remains available." : "Performance mode off." + (BackgroundPaused ? " Quiet hours still pause autonomous interactions." : "");
                 }
                 if (companion != null)
                 {
@@ -47143,17 +47148,15 @@ namespace CapriDesktop
                             if (pageOutside != null) throw new Exception("A settings control pokes out of the page: " + pageOutside);
                             SmokeLanguages(checks);
                             // Her default personality and safety lines are in code, her reply rules come last, and her chat and voice-chat prompts start with all three.
-                            const string todaysPersona = "2975408ad8bc6d515aa950c64ad896f5890dfdfa3eb039b105a4f972eeb51e14";
+                            const string todaysPersona = "c7a1f0cf61bedd32e3f78dcc2ff3580a9eefb0e704603f29d4a0a6e18bc0e6ac";
                             Func<string, string> personaHash = delegate(string text) { using (System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(new System.Text.UTF8Encoding(false).GetBytes(text))).Replace("-", "").ToLowerInvariant(); };
                             bool personaEditable = mainframe.PersonalityShown != "Her personality";
-                            bool personaFixed = Brain.Persona == Brain.DefaultPersonality + "\n" + Brain.Safety + "\n" + Brain.Machinery && Brain.Persona.Length == 6964 && personaHash(Brain.Persona) == todaysPersona && Brain.PersonalityStamp == ""
+                            bool personaFixed = Brain.Persona == Brain.DefaultPersonality + "\n" + Brain.Safety + "\n" + Brain.Machinery && personaHash(Brain.Persona) == todaysPersona && Brain.PersonalityStamp == Brain.Stamp(Brain.Persona)
                                 && Brain.Character.StartsWith(Brain.Persona, StringComparison.Ordinal) && Agent.Prompt.StartsWith(Brain.Persona + Hands.Note, StringComparison.Ordinal)
-                                && Brain.Machinery.IndexOf("call people only by names you've actually seen or heard", StringComparison.Ordinal) > 0 && Brain.Machinery.IndexOf("never apologise for the same thing twice", StringComparison.Ordinal) > 0
-                                && Computer.Playing.IndexOf("never invent a name, a message or something nobody said", StringComparison.Ordinal) > 0
-                                && Brain.DefaultPersonality.IndexOf("When someone donates or tips", StringComparison.Ordinal) > 0 && Brain.DefaultPersonality.IndexOf("Thanks for the eddies. Good boy.", StringComparison.Ordinal) > 0
-                                && Computer.Playing.IndexOf("When someone donates", StringComparison.Ordinal) > 0 && Computer.Playing.IndexOf("call them a good boy", StringComparison.Ordinal) > 0
-                                && Brain.DefaultPersonality.IndexOf("it helps keep me online!", StringComparison.Ordinal) > 0 && Brain.DefaultPersonality.IndexOf("ko-fi.com/lachysdev", StringComparison.Ordinal) > 0
-                                && Computer.Playing.IndexOf("it helps keep me online!", StringComparison.Ordinal) > 0 && Computer.Playing.IndexOf("ko-fi.com/lachysdev", StringComparison.Ordinal) > 0;
+                                && Brain.DefaultPersonality.Contains("without a permanent name") && !Brain.DefaultPersonality.Contains("Arasaka")
+                                && Brain.Machinery.Contains("call people only by names you've actually seen or heard")
+                                && Computer.Playing.Contains("never invent a name, a message or something nobody said")
+                                && !Computer.Playing.Contains("call them a good boy") && !Computer.Playing.Contains("ko-fi.com/lachysdev");
                             if (!personaFixed || personaEditable) throw new Exception("Her default personality or safety lines changed, or her personality key doesn't say she's herself: " + Brain.Persona.Length + " characters, SHA-256 " + personaHash(Brain.Persona) + ", key " + mainframe.PersonalityShown + ". If they changed on purpose, update todaysPersona here.");
                             if (Brain.Stamp(Brain.DefaultPersonality) != Brain.DefaultStamp || Brain.Retired.Contains(Brain.DefaultStamp))
                                 throw new Exception("Her default personality changed. Set Brain.DefaultStamp to " + Brain.Stamp(Brain.DefaultPersonality) + " and add the old stamp to Brain.Retired, so untouched copies of personality.md stay her default.");
@@ -47174,7 +47177,7 @@ namespace CapriDesktop
                                 personaTaken = Brain.Personality == "You are Capri, but soft, calm and caring with me.\nSpeak gently, like a whisper." && Brain.Persona == Brain.Personality + "\n" + Brain.Holds + "\n" + Brain.Safety + "\n" + Brain.Machinery
                                     && Brain.Character.StartsWith(Brain.Persona, StringComparison.Ordinal) && Agent.Prompt.StartsWith(Brain.Persona + Hands.Note, StringComparison.Ordinal) && Brain.PersonalityStamp.Length == 16 && Agent.Stale(Agent.Version, "");
                                 mainframe.PickPersonality("Reset to her default");
-                                personaReset = !File.Exists(personaFile) && File.Exists(Brain.PersonalityBackup) && File.ReadAllText(Brain.PersonalityBackup).Contains("soft, calm and caring") && personaHash(Brain.Persona) == todaysPersona && Brain.PersonalityStamp == "";
+                                personaReset = !File.Exists(personaFile) && File.Exists(Brain.PersonalityBackup) && File.ReadAllText(Brain.PersonalityBackup).Contains("soft, calm and caring") && personaHash(Brain.Persona) == todaysPersona && Brain.PersonalityStamp == Brain.Stamp(Brain.Persona);
                                 personaShownBack = mainframe.PersonalityShown;
                             }
                             finally
@@ -51480,7 +51483,7 @@ namespace CapriDesktop
                             }
                             string log;
                             lock (asked) log = string.Join(" | ", asked.ToArray());
-                            if (agent == null || !agent.Ready || preferences.AgentId != "agent_old" || preferences.AgentVersion != Agent.Version || preferences.AgentPersonality != "" || mainframe.VoiceStatus.IndexOf("Voice chat on", StringComparison.Ordinal) != 0) throw new Exception("Voice chat did not open the agent link: " + mainframe.VoiceStatus + " / " + log);
+                            if (agent == null || !agent.Ready || preferences.AgentId != "agent_old" || preferences.AgentVersion != Agent.Version || preferences.AgentPersonality != Brain.PersonalityStamp || mainframe.VoiceStatus.IndexOf("Voice chat on", StringComparison.Ordinal) != 0) throw new Exception("Voice chat did not open the agent link: " + mainframe.VoiceStatus + " / " + log);
                             short[] loud = new short[Ears.Chunk];
                             for (int i = 0; i < loud.Length; i++) loud[i] = (short)(Math.Sin(i * 0.3) * 9000);
                             pill.Press(3);
@@ -51515,7 +51518,7 @@ namespace CapriDesktop
                             }
                             agentToolsFirst += "]";
                             agentToolsNext += "]}}}}";
-                            string[] wanted = { "http POST /v1/convai/agents/create sk_test_capri_1234 {\"name\":\"Capri\"", "\"turn\":{\"turn_timeout\":30,\"silence_end_call_timeout\":45}", "http PATCH /v1/convai/agents/agent_old sk_test_capri_1234 {\"conversation_config\":{\"turn\":{\"turn_timeout\":30,\"silence_end_call_timeout\":45},\"agent\":{\"prompt\":{\"prompt\":\"You are Capri", agentToolsFirst, agentToolsNext, "\"name\":\"move_yourself\"", "\"name\":\"animate\"", "\"name\":\"play_music\"", "\"name\":\"app_window\"", "\"name\":\"look_at_screen\"", "\"name\":\"watch_for\"", "http GET /v1/convai/tools?page_size=100 sk_test_capri_1234", "http POST /v1/convai/tools sk_test_capri_1234 {\"tool_config\":{\"type\":\"client\",\"name\":\"open_website\"", "\"name\":\"media\",\"description\":\"Control their music", "\"expects_response\":true,\"response_timeout_secs\":20}}", "You have tools for their PC", "tool {\"type\":\"client_tool_result\",\"tool_call_id\":\"call_1\",\"result\":\"Opened Spotify.\",\"is_error\":false}", "ran SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify", "Never check in", "beg them to talk or say they left you hanging", "\"prompt\":{\"prompt\":\"You are Capri", "\"llm\":\"gemini-2.5-flash\"", "\"tts\":{\"voice_id\":\"abc\"}", "\"overrides\":{\"conversation_config_override\":{\"agent\":{\"prompt\":{\"prompt\":true}},\"tts\":{\"voice_id\":true}}}", "http GET /v1/convai/conversation/get-signed-url?agent_id=agent_old sk_test_capri_1234", "init {\"type\":\"conversation_initiation_client_data\",\"conversation_config_override\":{\"agent\":{\"prompt\":{\"prompt\":\"You are Capri", "pong {\"type\":\"pong\",\"event_id\":7}", "chunk silent | chunk loud | chunk loud" };
+                            string[] wanted = { "http POST /v1/convai/agents/create sk_test_capri_1234 {\"name\":\"AI Companion\"", "\"turn\":{\"turn_timeout\":30,\"silence_end_call_timeout\":45}", "http PATCH /v1/convai/agents/agent_old sk_test_capri_1234 {\"conversation_config\":{\"turn\":{\"turn_timeout\":30,\"silence_end_call_timeout\":45},\"agent\":{\"prompt\":{\"prompt\":\"You are an individual AI desktop companion", agentToolsFirst, agentToolsNext, "\"name\":\"move_yourself\"", "\"name\":\"animate\"", "\"name\":\"play_music\"", "\"name\":\"app_window\"", "\"name\":\"look_at_screen\"", "\"name\":\"watch_for\"", "http GET /v1/convai/tools?page_size=100 sk_test_capri_1234", "http POST /v1/convai/tools sk_test_capri_1234 {\"tool_config\":{\"type\":\"client\",\"name\":\"open_website\"", "\"name\":\"media\",\"description\":\"Control their music", "\"expects_response\":true,\"response_timeout_secs\":20}}", "You have tools for their PC", "tool {\"type\":\"client_tool_result\",\"tool_call_id\":\"call_1\",\"result\":\"Opened Spotify.\",\"is_error\":false}", "ran SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify", "Never check in", "beg them to talk or say they left you hanging", "\"prompt\":{\"prompt\":\"You are an individual AI desktop companion", "\"llm\":\"gemini-2.5-flash\"", "\"tts\":{\"voice_id\":\"abc\"}", "\"overrides\":{\"conversation_config_override\":{\"agent\":{\"prompt\":{\"prompt\":true}},\"tts\":{\"voice_id\":true}}}", "http GET /v1/convai/conversation/get-signed-url?agent_id=agent_old sk_test_capri_1234", "init {\"type\":\"conversation_initiation_client_data\",\"conversation_config_override\":{\"agent\":{\"prompt\":{\"prompt\":\"You are an individual AI desktop companion", "pong {\"type\":\"pong\",\"event_id\":7}", "chunk silent | chunk loud | chunk loud" };
                             foreach (string piece in wanted) if (log.IndexOf(piece, StringComparison.Ordinal) < 0) throw new Exception("Agent traffic was missing " + piece + ": " + log);
                             bool sawInVoice = false;
                             lock (asked) foreach (string entry in asked) if (entry.StartsWith("init ", StringComparison.Ordinal) && entry.IndexOf("a pixel art farm with a red barn. You said: \\\"Cute barn.\\\"", StringComparison.Ordinal) >= 0) sawInVoice = true;

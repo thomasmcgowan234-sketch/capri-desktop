@@ -6,13 +6,13 @@ $ErrorActionPreference = 'Stop'
 if ($env:CAPRI_DISPOSABLE_USER -ne '1') { throw 'Set CAPRI_DISPOSABLE_USER=1 in a disposable Windows profile.' }
 
 $setup = (Resolve-Path $Setup).Path
-$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Capri'
+$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'CapriCompanion\app'
 $app = Join-Path $capriDir 'Capri.exe'
 $uninstaller = Join-Path $capriDir 'Uninstall.exe'
 $marker = Join-Path $capriDir '.capri-install'
-$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'Capri.lnk'
-$otherLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Capri.lnk'
-$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Desktop'
+$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'AI Companion.lnk'
+$otherLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'AI Companion.lnk'
+$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Companion'
 $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 if (!(Test-Path $marker) -or !(Test-Path $uninstaller)) { throw 'Run test-silent-install.ps1 first.' }
 if (Test-Path $otherLink) { throw "A desktop shortcut is already at $otherLink." }
@@ -25,7 +25,9 @@ foreach ($pack in $packs) {
     [IO.File]::WriteAllText((Join-Path $capriDir "$pack\model\fixture"), $pack)
 }
 New-Item (Join-Path $capriDir 'mods') -ItemType Directory -Force | Out-Null
-$kept = (Join-Path $capriDir 'kept.txt'), (Join-Path $capriDir 'mods\kept.capri-mod')
+$dataDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'CapriCompanion\data'
+New-Item (Join-Path $dataDir 'companion') -ItemType Directory -Force | Out-Null
+$kept = (Join-Path $capriDir 'kept.txt'), (Join-Path $capriDir 'mods\kept.capri-mod'), (Join-Path $dataDir 'companion\identity.json'), (Join-Path $dataDir 'settings.json')
 foreach ($file in $kept) { [IO.File]::WriteAllText($file, 'theirs') }
 $shell = New-Object -ComObject WScript.Shell
 $shortcut = $shell.CreateShortcut($otherLink)
@@ -33,7 +35,7 @@ $shortcut.TargetPath = Join-Path $env:WINDIR 'notepad.exe'
 $shortcut.Save()
 # A fresh runner has no Run key until something starts with Windows.
 if (!(Test-Path $run)) { New-Item $run | Out-Null }
-Set-ItemProperty $run -Name Capri -Value ('"' + $app + '"')
+Set-ItemProperty $run -Name CapriCompanion -Value ('"' + $app + '"')
 
 $err = Join-Path $env:TEMP ('capri-uninstall-' + [guid]::NewGuid().ToString('N') + '.txt')
 function Run([string]$exe, [string]$flags) {
@@ -41,7 +43,7 @@ function Run([string]$exe, [string]$flags) {
     return @($p.ExitCode, (Get-Content $err -Raw -ErrorAction SilentlyContinue))
 }
 function Kept {
-    foreach ($file in $kept) { if (!(Test-Path $file)) { throw "The uninstall removed $file, which isn't hers." } }
+    foreach ($file in $kept) { if (!(Test-Path $file) -or [IO.File]::ReadAllText($file) -ne 'theirs') { throw "The uninstall changed preserved data: $file." } }
     if (!(Test-Path $otherLink)) { throw 'The uninstall removed a shortcut that starts another program.' }
 }
 try {
@@ -52,7 +54,7 @@ try {
     if ($failed[0] -eq 0) { throw 'A locked Capri.exe was reported as removed.' }
     if ([string]::IsNullOrWhiteSpace($failed[1])) { throw 'The silent uninstall failed without a reason.' }
     if (!(Test-Path $marker) -or !(Test-Path $arp) -or !(Test-Path $app) -or !(Test-Path $uninstaller)) { throw 'A failed uninstall lost her install marker, uninstall entry, app or uninstaller, so it cannot be tried again.' }
-    if ($null -ne (Get-ItemProperty $run -Name Capri -ErrorAction SilentlyContinue)) { throw 'A failed uninstall kept her Start with Windows entry.' }
+    if ($null -ne (Get-ItemProperty $run -Name CapriCompanion -ErrorAction SilentlyContinue)) { throw 'A failed uninstall kept her Start with Windows entry.' }
     Kept
 
     # Trying again goes through her uninstall entry's quiet command, the way winget removes her.
@@ -81,5 +83,5 @@ try {
 finally {
     if (Test-Path $err) { Remove-Item $err -Force }
     if (Test-Path $otherLink) { Remove-Item $otherLink -Force }
-    if ((Get-ItemProperty $run -Name Capri -ErrorAction SilentlyContinue).Capri -eq ('"' + $app + '"')) { Remove-ItemProperty $run -Name Capri }
+    if ((Get-ItemProperty $run -Name CapriCompanion -ErrorAction SilentlyContinue).CapriCompanion -eq ('"' + $app + '"')) { Remove-ItemProperty $run -Name CapriCompanion }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 namespace CapriDesktop
 {
+    internal static class Brain { internal static CompanionRoutine Routine; }
     internal static class Voice
     {
         internal static short[] Samples(byte[] wav, out int rate) { throw new NotSupportedException("Audio decoding is outside this fixture."); }

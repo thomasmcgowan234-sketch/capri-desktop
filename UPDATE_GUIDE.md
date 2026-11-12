@@ -1,6 +1,6 @@
 # Releases, backups and recovery
 
-The companion is a separately maintained Capri fork. Do not install an official Capri executable over it. Production upstream update check/download/install paths are blocked; Check updates points to the manual companion process. This release does not implement a signed automatic fork updater.
+Companion release 0.1.0 is a separately maintained Capri fork. Its binary informational version is `0.8.9-companion.0.1.0`; the assembly compatibility version retains Capri 0.8.9. Do not install an official Capri executable over it. Production upstream update check/download/install paths are blocked; Check updates points to the manual companion process. This release does not implement a signed automatic fork updater.
 
 ## Data and application directories
 
@@ -24,6 +24,14 @@ The companion data directory can contain settings, account-bound encrypted Windo
 
 3. Inspect smoke results. Run `Capri.exe` for development or this fork's `Capri-Setup.exe` for installation. Existing filenames/some shell labels remain Capri for compatibility; they do not set the character's chosen identity.
 4. Configure Ollama/local model in Mainframe. Check `ollama list` and the exact installed tag. Cloud brain/voice configuration is optional; read [PRIVACY.md](PRIVACY.md).
+
+A second build route cross-compiles the actual Windows WinForms application with an installed .NET SDK and official NuGet reference packages:
+
+```bash
+dotnet build ci/Companion.Windows.csproj -c Release
+```
+
+Output is `ci/bin/Release/net48/Capri.exe`. Copy it as `Capri-Setup.exe` for the inherited filename-selected installer, retaining the configuration and required notices. The original native PowerShell build also carries those resources and remains the Windows acceptance route. No SDK runtime/reference-pack DLLs are shipped as substitute Windows components.
 
 The Windows executable/installer must be validated on Windows. A Linux build cannot establish Windows acceptance.
 
@@ -51,3 +59,15 @@ The Windows installer preserves the displaced executable as `app/Capri.exe.previ
 In this fork, fetch the original as a source remote, inspect selected commits, and cherry-pick/merge on an integration branch. Resolve conflicts around identity/context, screen gates, skin transactions, profile paths, updater guards and build lists deliberately. Run regressions and Windows acceptance before tagging. Do not re-enable upstream executable updates.
 
 Use companion tags such as `companion-v0.1.0`, record source commit/toolchain, and ship `LICENSE.md`, `THIRD-PARTY-NOTICES.md` and dependency notices. Capri's PolyForm Noncommercial licence/Required Notices still apply, including the anonymous artist and other asset credits.
+
+## Offline full-profile backup tool
+
+With the application closed, Python 3.9+ can make a private archive, verify it, and restore it into a **new** directory. These commands perform no network requests:
+
+```powershell
+python .\tools\companion_backup.py backup --profile "$env:LOCALAPPDATA\CapriCompanion\data" --destination "D:\CompanionBackups\before-update.zip"
+python .\tools\companion_backup.py verify "D:\CompanionBackups\before-update.zip"
+python .\tools\companion_backup.py restore "D:\CompanionBackups\before-update.zip" --destination "$env:LOCALAPPDATA\CapriCompanion\recovered-data"
+```
+
+The destination archive must not already exist. Backup records per-file SHA-256, verifies captured bytes and publishes without overwriting an older backup. Restore checks version, paths, sizes, duplicates and hashes, re-verifies staged files, and refuses existing target profiles. To recover the active profile, close the app, rename/preserve its current `data` directory, then move verified `recovered-data` into its place. Backups contain credentials and personal records in plaintext; store them privately. Symlinked/external vaults are deliberately excluded and must be backed up separately. Windows DPAPI keys remain bound to the original account.

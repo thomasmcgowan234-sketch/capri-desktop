@@ -21,5 +21,8 @@ python3 "$root/tests/font-bootstrap/run.py" "$root/tests/font-bootstrap/bin/Rele
 
 # Companion fork identity, update isolation, observation and appearance regressions.
 dotnet run --project "$root/tests/companion/CompanionIdentityChecks.csproj" -c Release
-dotnet run --project "$root/tests/appearance/AppearanceChecks.csproj" -c Release
+xvfb-run -a dotnet run --project "$root/tests/appearance/AppearanceChecks.csproj" -c Release
 python3 "$root/tests/companion-profile/run.py"
+dotnet run --project "$root/tests/observation/ObservationChecks.csproj" -c Release
+dotnet run --project "$root/tests/companion-integration/CompanionIntegrationChecks.csproj" -c Release
+python3 "$root/tests/companion-backup/checks.py"

@@ -7,15 +7,15 @@ $ErrorActionPreference = 'Stop'
 if ($env:CAPRI_DISPOSABLE_USER -ne '1') { throw 'Set CAPRI_DISPOSABLE_USER=1 in a disposable Windows profile.' }
 
 $setup = (Resolve-Path $Setup).Path
-$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Capri'
-$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'Capri.lnk'
-$desktopLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Capri.lnk'
-$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Desktop'
+$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'CapriCompanion\app'
+$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'AI Companion.lnk'
+$desktopLink = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'AI Companion.lnk'
+$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Companion'
 $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 foreach ($installed in (Join-Path $capriDir '.capri-install'), (Join-Path $capriDir 'Capri.exe'), (Join-Path $capriDir 'Uninstall.exe'), $link, $desktopLink, $arp) {
     if (Test-Path $installed) { throw "Capri is already installed for this user: $installed" }
 }
-function Starts { return (Get-ItemProperty $run -Name Capri -ErrorAction SilentlyContinue).Capri }
+function Starts { return (Get-ItemProperty $run -Name CapriCompanion -ErrorAction SilentlyContinue).CapriCompanion }
 if ($null -ne (Starts)) { throw 'Something already starts a Capri with Windows for this user.' }
 
 $err = Join-Path $env:TEMP ('capri-install-' + [guid]::NewGuid().ToString('N') + '.txt')
@@ -39,13 +39,13 @@ try {
     if ($null -ne (Starts)) { throw 'A new install made her start with Windows.' }
     $older = '"' + (Join-Path $capriDir 'Capri.exe') + '"'
     if (!(Test-Path $run)) { New-Item $run | Out-Null }
-    Set-ItemProperty $run -Name Capri -Value $older
+    Set-ItemProperty $run -Name CapriCompanion -Value $older
 
     $again = Run '--silent'
     if ($again[0] -ne 0) { throw "A second silent install exited $($again[0]): $($again[1])" }
     if (!(Test-Path (Join-Path $capriDir 'Capri.exe')) -or !(Test-Path $link)) { throw 'A second silent install lost her app or shortcut.' }
     if ((Starts) -ne $older) { throw "Installing over her changed her Start with Windows entry: $(Starts)" }
-    Remove-ItemProperty $run -Name Capri
+    Remove-ItemProperty $run -Name CapriCompanion
 
     foreach ($flags in '--silent --unknown', '--silent --update', '--silent --remove-files') {
         $wrong = Run $flags

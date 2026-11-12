@@ -2652,7 +2652,7 @@ namespace CapriDesktop
             foreach (string home in new[] { Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), Environment.GetEnvironmentVariable("PUBLIC") })
             {
                 if (string.IsNullOrEmpty(home)) continue;
-                string alias = Path.Combine(Path.Combine(home, "Capri"), name);
+                string alias = Path.Combine(Path.Combine(home, CompanionProfile.Name), name);
                 if (Directory.Exists(alias)) return alias;
                 try
                 {

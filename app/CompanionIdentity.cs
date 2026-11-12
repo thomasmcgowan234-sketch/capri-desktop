@@ -366,6 +366,16 @@ namespace CapriDesktop
                 }
             }
         }
+        internal bool Interested(string topic)
+        {
+            if (string.IsNullOrWhiteSpace(topic)) return false;
+            lock (gate)
+            {
+                if (!Enabled || readOnly) return false;
+                return document.Records.Exists(delegate(IdentityRecord record)
+                    { return record.State == "established" && (record.Category == "interest" || record.Category == "preference") && string.Equals(record.Text.Trim(), topic.Trim(), StringComparison.OrdinalIgnoreCase); });
+            }
+        }
         private static int Score(IdentityRecord record, List<string> words)
         {
             int score = record.Category == "name" ? 1000 : record.State == "established" && record.Category != "memory" ? 100 : 0;

@@ -795,7 +795,7 @@ namespace CapriDesktop
         // (Lachy, 30 Oct: she kept apologising for names she made up, "over 5 times each"), and the voice fix.
         internal const string Machinery =
             "Prefer concise plain text for speech. Provide longer explanations or copyable prompts when requested. Do not claim a tool succeeded unless its result confirms success.\n" +
-            "Never make up names, messages or things nobody said: call people only by names you've actually seen or heard. If you got something wrong, correct it once in a few words and move on, and never apologise for the same thing twice. Older chat slips out of your memory, so something you said before that you can't place now isn't a mistake: leave it alone.\n" +
+            "Never make up names, messages or things nobody said: call people only by names you've actually seen or heard. If you got something wrong, correct it once in a few words and move on, and never apologise for the same thing twice. When earlier context is unavailable, admit uncertainty. A prior assistant assertion is not proof; respect user corrections.\n" +
             "Only if they say your voice, voice chat or ElevenLabs is broken or won't connect: tell them to make a new ElevenLabs key with Restrict key turned off, paste it under VOICE in Capri Mainframe and press Connect. Never invent other settings or permissions to turn on.";
 
         // Only after their own personality.md: a line from her code that keeps her safety lines above anything it says.
@@ -805,23 +805,44 @@ namespace CapriDesktop
         {
             get
             {
-                string yours = Personality;
-                return (yours == DefaultPersonality ? DefaultPersonality + "\n" + Safety + "\n" + Machinery : yours + "\n" + Holds + "\n" + Safety + "\n" + Machinery) + IdentityContext();
+                return PersonaFor("");
             }
         }
 
+        private static string PersonaFor(string query)
+        {
+            string yours = Personality;
+            return (yours == DefaultPersonality ? DefaultPersonality + "\n" + Safety + "\n" + Machinery : yours + "\n" + Holds + "\n" + Safety + "\n" + Machinery) + IdentityContext(query);
+        }
+
         internal static CompanionIdentity Identity;
-        internal static Func<bool> BackgroundPaused = delegate { return false; };
-        internal const string CompanionHelp = "Companion commands (work without a model): /identity, /identity name NAME, /identity remember FACT, /identity restore; /observe start (30 minutes, local inference), /observe start cloud (selected remote provider may receive screenshots), /observe stop. On Windows: /performance on or /performance off. Use Mainframe for model, microphone, privacy, skins and exit controls.";
+        internal static CompanionRoutine Routine;
+        internal static Func<bool> BackgroundPaused = delegate { return Routine != null && Routine.Paused; };
+        internal const string CompanionHelp = "Companion commands (work without a model): /identity, /identity name NAME, /identity remember FACT, /identity restore; /observe start (30 minutes, local inference), /observe start cloud (selected remote provider may receive screenshots), /observe stop. Also: /quiet hours 22:00-08:00, /quiet hours off, /performance on or /performance off. Use Mainframe for model, microphone, privacy, skins and exit controls.";
         internal static string CompanionCommand(string text)
         {
             if (string.Equals((text ?? "").Trim(), "/companion help", StringComparison.OrdinalIgnoreCase)) return CompanionHelp;
+            if (Routine != null)
+            {
+                string routine = Routine.Command(text,
+#if CROSS
+                    true
+#else
+                    false
+#endif
+                );
+                if (routine != null) return routine;
+            }
             string observation = CompanionObservation.Command(text);
             if (observation != null) return observation;
             CompanionIdentity identity = Identity;
             if (identity == null) return null;
             identity.Enabled = Keeping;
             return identity.HandleCommand(text);
+        }
+        internal static bool IdentityInterested(string topic)
+        {
+            return Keeping && Identity != null && Identity.Interested(topic);
         }
         internal static void IdentityEvidence(string text)
         {
@@ -830,12 +851,12 @@ namespace CapriDesktop
             identity.Enabled = Keeping;
             identity.ObserveUserTurn(text, "");
         }
-        internal static string IdentityContext()
+        internal static string IdentityContext(string query = "")
         {
             CompanionIdentity identity = Identity;
             if (identity == null) return "";
             identity.Enabled = Keeping;
-            return identity.Context("");
+            return identity.Context(query);
         }
 
         internal const string PersonalityName = "personality.md";
@@ -1053,7 +1074,7 @@ namespace CapriDesktop
         internal static string Speech()
         {
             string language = Language;
-            return string.IsNullOrEmpty(language) || language == "English" ? "" : "\nAlways reply in " + language + ", whatever language they use. Keep your Night City slang words as they are.";
+            return string.IsNullOrEmpty(language) || language == "English" ? "" : "\nAlways reply in " + language + ", whatever language they use. Keep names and quoted text accurate.";
         }
 
         // The part of a labelled reply she says out loud, in their language, with the labels and words her code reads back left as written.
@@ -2342,7 +2363,7 @@ namespace CapriDesktop
             int answerBudget = self == null ? Budget : Math.Max(Budget, self.StartsWith("What's new:", StringComparison.Ordinal) ? 900 : 360);
             List<ChatMessage> messages = new List<ChatMessage>();
             string secondThought = followUps ? Replies.Instruction : "";
-            string steady = Character + (Cues ? Cueing : "") + secondThought + WrittenDown();
+            string steady = PersonaFor(text) + Speech() + Called() + Longer() + (Cues ? Cueing : "") + secondThought + WrittenDown();
 #if !CROSS
             callContext = CallSession.Tools + callContext;
 #endif
@@ -2975,6 +2996,9 @@ namespace CapriDesktop
 
         private bool LocalInference()
         {
+#if CROSS
+            if (Provider != null) return false; // Plan/account transports can send screenshots remotely.
+#endif
             Cloud remote = Remote;
             if (remote != null) return remote.Kind == "local" && CompanionObservation.Loopback(remote.Host);
             return Local != null || CompanionObservation.Loopback(Server ?? Ollama);
@@ -4951,7 +4975,7 @@ namespace CapriDesktop
     {
 #if CROSS
         // Mac and Linux screenshots show her and her bubble too, so she once took herself for their anime wallpaper (a Bazzite user).
-        private const string Mirror = "The small red-haired anime girl with a speech bubble is you, Capri, not part of their screen, so leave her out. ";
+        private const string Mirror = "The desktop companion avatar and its speech bubble are overlays, not part of the observed application, so leave her out. ";
 #else
         private const string Mirror = "";
 #endif
@@ -5389,8 +5413,8 @@ namespace CapriDesktop
 
         internal static string Rules(string tongue)
         {
-            return "You translate the fixed lines of Capri, a cheeky cyberpunk girl from Night City who lives on the user's PC as a desktop companion, into " + tongue + ". " +
-                "Keep her voice: playful, sassy and short, with her jokes. Keep her Night City slang words (choom, preem, corpo), Night City, Capri, ElevenLabs and anything in [square brackets] as they are. " +
+            return "You translate interface dialogue for an AI desktop companion into " + tongue + ". " +
+                "Preserve the speaker's meaning, tone, chosen names and anything in [square brackets]. Do not add a fictional personality or slang. " +
                 "Lines that start with (label) are tiny lowercase labels in her chat log after \"sys:\", naming what the user just did to her or what just happened, " +
                 "like \"pets you\" (the user is petting her), \"throws you\" (the user threw her) or \"startup\" (she just started up). Translate those as short labels, without (label). " +
                 "Reply with only the same numbered lines in " + tongue + ", one per line, and nothing else.";

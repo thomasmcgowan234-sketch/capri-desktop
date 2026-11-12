@@ -21,6 +21,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         NativeFontBootstrap.Initialize();
+        if (args.Length == 0) CompanionObservation.Command("/observe start cloud"); // Synthetic default suite, no personal desktop/provider.
         if (args.Length == 1 && args[0] == "--tool-lifecycle") { ToolLifecycleChecks.Run(); return 0; }
         if (args.Length == 4 && args[0] == "--terminal-model") return TerminalModelCheck.Run(args[1], args[2], args[3]);
         if (args.Length == 4 && args[0] == "--native-model") return NativeDesktopCheck.Run(args[1], args[2], args[3]);

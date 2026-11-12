@@ -37,6 +37,8 @@ with tempfile.TemporaryDirectory(prefix='companion-voice-state-') as taskdir:
     task = Path(taskdir)
     for name in ['Program.cs', 'Checks.csproj']:
         shutil.copy2(here / name, task / name)
+    shutil.copy2(root / 'app/CompanionRoutine.cs', task / 'CompanionRoutine.cs')
+    inputs['app/CompanionRoutine.cs'] = hashlib.sha256((root / 'app/CompanionRoutine.cs').read_bytes()).hexdigest()
     talk = region('app/Asides.cs', '    internal sealed class TalkOver\n', '    internal sealed partial class Companion\n')
     gates = [
         method('app/Capri.cs', 'internal bool BackgroundPaused '),

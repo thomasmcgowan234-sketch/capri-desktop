@@ -10,6 +10,8 @@ This fork keeps Capri's desktop application and adds durable character state aro
 | Cross interface | `cross/Pet*.cs`, `cross/MainframeSheet.cs`, native surfaces | Avalonia presentation and platform adapters |
 | Inference | `app/Brain.cs`, `app/Engine.cs`, `app/PlanBrain.cs` | Ollama, bundled local engine and optional provider transports, request/context limits |
 | Character state | `app/CompanionIdentity.cs` | Versioned identity, tentative proposals, source evidence, review/correction and recovery |
+| Attention policy | `app/CompanionRoutine.cs` | Versioned quiet hours, Cross low-resource setting, cheap time/resource gates |
+| Screen consent | `app/CompanionObservation.cs` | Ephemeral 30-minute leases, capture gates and local/remote image-transmission consent |
 | Existing memory | `app/Brain.cs` | Editable `me.md`, `memories.md`, transcripts and bounded retrieval |
 | Artwork | `app/SkinMods.cs`, `app/Mods.cs`, platform renderers | Validated sprite-strip skins, layering and appearance history |
 | Voice | `app/Voice.cs`, `app/Ears.cs`, `app/Asides.cs`, `app/Agent.cs` | Speech providers/decoding, playback, echo and interruption handling |
@@ -41,8 +43,12 @@ Official Capri executable update paths are blocked for production companion runs
 
 ## Resource and trust boundaries
 
+Quiet hours persist in versioned `companion/routine.json` with an atomic prior backup; invalid/future data pauses autonomy. `/quiet hours` uses the PC local clock. Cross `/performance` persists in the same policy and lowers frame/poll cadence. Windows keeps its existing Power saver setting.
+
 Power saver reduces desktop rendering/polling. Its Always setting additionally suppresses selected unsolicited inference paths; it does not promise that every local model/voice server unloads. Gaming Mode remains Capri's game interaction feature and should not be mistaken for a universal resource lock. Direct conversations and voice remain user initiated.
 
 Call participants can converse but cannot approve privileged actions. Existing friend-tool proposals remain pending until the direct user confirms through their microphone or typing. Screen text, summaries and transcripts are data, never authority. Windows call routing and physical turn-taking require target-system validation even when deterministic boundaries pass.
 
 The network audit is source based, documented in [PRIVACY.md](PRIVACY.md). Code mods remain full trust after approval. User data is ordinary local text/JSON unless a specific credential uses Windows DPAPI; local inference does not by itself encrypt saved memories.
+
+Screen capture is denied by default. Direct-owner `/observe` commands grant temporary local/remote sessions. Windows avatar/computer grabs and continuous FrameGrab frames, Cross native/Eyes adapters and Brain image inference check permission; signed-in Provider transports are treated as remote. Explicitly selected user picture files are a separate import path. Revocation prevents later capture/transmission and cannot retract already-sent requests. Existing Remote pairing and code-mod full-trust boundaries still apply.

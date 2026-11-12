@@ -26,11 +26,15 @@ New companion checks:
 ```bash
 dotnet run --project tests/companion/CompanionIdentityChecks.csproj -c Release
 python3 tests/voice-state/run.py
+python3 tests/companion-profile/run.py
+dotnet run --project tests/observation/ObservationChecks.csproj -c Release
+dotnet run --project tests/companion-integration/CompanionIntegrationChecks.csproj -c Release
+python3 tests/companion-backup/checks.py
 dotnet build tests/appearance/AppearanceChecks.csproj -c Release
 bash /workspace/.capri-env/run-x11.sh dotnet run --project /workspace/capri-desktop/tests/appearance/AppearanceChecks.csproj -c Release --no-build
 ```
 
-Appearance needs X11 for Avalonia's PNG backend; it does not open windows or access a live screen/microphone/model. Identity tests compile production source under C# 5. Voice tests extract the actual production interruption class/guards and use synthetic audio levels. Additional profile/observation projects and exact final results are recorded in `PROGRESS.md` after integration.
+Appearance needs X11 for Avalonia's PNG backend; it does not open windows or access a live screen/microphone/model. Identity tests compile production source under C# 5. Voice tests extract the actual production interruption class/guards and use synthetic audio levels. Profile checks compile the actual extracted Windows updater with the real profile/startup helpers. Observation tests compile production consent logic; integration checks use the real Cross Brain and a synthetic provider to verify context, model switching, consent and quiet-hour persistence. Backup tests use disposable synthetic private files. Exact final results are in `PROGRESS.md`. Install `xvfb` and `xauth` before the full Linux suite; it runs appearance checks on a disposable display.
 
 Build/publish and run isolated application smoke:
 
@@ -80,3 +84,5 @@ Call provenance uses source routing/echo heuristics, not biometric speaker recog
 ## Performance measurements
 
 On Ryzen 9 5900X/RX 7900 XTX, record idle application CPU/working set, Ollama/voice VRAM, first-token/speech latency, observation cadence and game frame-time distribution with normal vs Power saver Always. In-flight inference may finish; the switch does not force Ollama unload. Close other model clients when measuring release. This Linux task cannot supply target-PC measurements.
+
+SDK Windows cross-compilation was also executed: `dotnet build ci/Companion.Windows.csproj -c Release` (C#5/net48, official reference packages). It verifies source/resource compilation only. The adjusted disposable Windows installer scripts and `.NET Framework` native smoke must still be run on Windows.

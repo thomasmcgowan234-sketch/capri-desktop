@@ -147,6 +147,7 @@ namespace CapriDesktop
 
         internal bool Next(int timeoutMs)
         {
+            if (!CompanionObservation.Allowed) return false;
             if (timeoutMs < 0) throw new ArgumentOutOfRangeException("timeoutMs");
             lock (gate)
             {

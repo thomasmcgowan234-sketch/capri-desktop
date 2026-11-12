@@ -967,8 +967,8 @@ namespace CapriDesktop
                 string logged = File.ReadAllText(today), queued = File.Exists(unfolded) ? File.ReadAllText(unfolded) : "";
                 bool glancesKept = !Brain.FoldsGlances && logged.Contains("She glanced at your screen: an anime wallpaper with a red-haired girl. She stayed quiet.") && logged.Contains("Capri:** Cute wallpaper, choom.")
                     && !queued.Contains("anime wallpaper") && !queued.Contains("Cute wallpaper") && queued.Contains("You: we finally beat the smoke boss") && queued.Contains("She looked at your screen: a code editor with a red error on line 12.");
-                bool toldMirror = Glances.Line.IndexOf("The small red-haired anime girl with a speech bubble is you, Capri, not part of their screen", StringComparison.Ordinal) > 0
-                    && Pet.LookAsk.IndexOf("The small red-haired anime girl with a speech bubble is Capri, the desktop companion, not part of their screen", StringComparison.Ordinal) > 0;
+                bool toldMirror = Glances.Line.IndexOf("The desktop companion avatar and its speech bubble are overlays, not part of the observed application", StringComparison.Ordinal) > 0
+                    && Pet.LookAsk.IndexOf("The desktop companion avatar and its speech bubble are overlays, not part of the observed application", StringComparison.Ordinal) > 0;
                 if (!glancesKept || !toldMirror) throw new Exception("Her own sprite in screenshots went wrong: kept " + glancesKept + ", told " + toldMirror + " | " + queued.Replace("\n", " | "));
                 checks.Add("PASS her own sprite: her glance and check-my-screen prompts say the red-haired anime girl with the speech bubble is her, not part of their screen, and her glances go in the transcript but never into memories.md, while a look they asked for still does");
                 bool personaFixed = Brain.Persona == Brain.DefaultPersonality + "\n" + Brain.Safety + "\n" + Brain.Machinery && Brain.Safety.IndexOf("findahelpline.com", StringComparison.Ordinal) >= 0 && Brain.DefaultPersonality.IndexOf("helpline", StringComparison.Ordinal) < 0 && Brain.Character.StartsWith(Brain.Persona, StringComparison.Ordinal);
@@ -5281,7 +5281,7 @@ namespace CapriDesktop
                 && last.IndexOf("image_url", StringComparison.Ordinal) > 0 && last.IndexOf("1280 x 720", StringComparison.Ordinal) > 0 && last.IndexOf("send hola qu", StringComparison.Ordinal) > 0
                 && last.IndexOf("4. fly", StringComparison.Ordinal) > 0 && last.IndexOf("\\\"model\\\"", StringComparison.Ordinal) < 0 && last.IndexOf("eyes-test", StringComparison.Ordinal) > 0);
             fail("a job that never ends stops at 25 steps", Chores.MostSteps == 25 && endless == "Ran out of steps before finishing. Last: wait at 0, 0" && done.Count == 25 && replied == 30);
-            fail("she never clicks herself", last.IndexOf("The small red-haired girl with a speech bubble is you, Capri: never click her.", StringComparison.Ordinal) > 0);
+            fail("she never clicks herself", last.IndexOf("The desktop companion avatar and its speech bubble are overlays: never click them.", StringComparison.Ordinal) > 0);
             // Her own pointer, like Windows': it glides on a human path to the target while their mouse stays put, and parks
             // when the job ends.
             List<double[]> path = Chores.Path(0.1, 0.9, 0.8, 0.2, 7);
