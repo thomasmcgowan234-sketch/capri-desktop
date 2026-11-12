@@ -4992,6 +4992,12 @@ namespace CapriDesktop
             pet.SetLocalVoice("model", "kokoro");
             pet.SetLocalVoice("voice", "tone");
             fail("a set local server speaks", pet.Speaks && pet.Speaker.Name == "Local server" && pet.VoiceStatus == "local " + url + " | tone | speaking" && pet.VoiceMenu == "Provider: Local server | - | *Speak replies | - | Server: " + url + "... | Model: kokoro... | Voice: tone... | Format: WAV | - | Test voice");
+            int privateBefore;
+            lock (speechAsked) privateBefore = speechAsked.Count;
+            pet.Hear("/companion help");
+            MainframeWait(() => pet.Talk.Reply != null && pet.Talk.Reply.Contains("/identity"), "private companion command display");
+            Thread.Sleep(100);
+            lock (speechAsked) fail("companion commands stay text-only", speechAsked.Count == privateBefore);
             Func<string, string> problem = delegate(string text)
             {
                 try { pet.Speaker.Speak(text); return null; }

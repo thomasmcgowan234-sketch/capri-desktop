@@ -44,3 +44,5 @@ Remote retains Capri's optional pairing, revocation and encrypted transport. It 
 Blocking upstream executable replacement is not automatic cryptographic signature verification. Build reviewed source or obtain artifacts/checksums through a trusted channel; keep licence notices. [UPDATE_GUIDE.md](UPDATE_GUIDE.md) covers backup/rollback and selected upstream source fixes.
 
 Structured identity correction/forgetting affects its own current records. Inherited `me.md`, `memories.md`, daily transcripts and historical backups are separate stores; use their editors/settings when correcting or erasing the corresponding text. Quiet-hour settings contain schedule/resource fields, separate from personal memories.
+
+Companion management commands display their responses as text; they do not synthesize identity records or privacy status through local/cloud voice services or call routing. Normal conversation still uses the voice provider you selected.

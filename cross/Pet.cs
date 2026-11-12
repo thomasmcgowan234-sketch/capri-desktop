@@ -4457,7 +4457,9 @@ namespace CapriDesktop
                 {
                     Brain.Cancel();
                     if (text.Equals("/observe stop", StringComparison.OrdinalIgnoreCase)) { Eyes.Stop(); StopNativeWork(); }
-                    Reply(++asking, text, companion);
+                    ownedVoice?.Cancel();
+                    voice.Stop();
+                    Reply(++asking, text, companion, textOnly: true);
                     return;
                 }
                 Brain.IdentityEvidence(text);
@@ -4604,7 +4606,7 @@ namespace CapriDesktop
             }
         }
 
-        private void Reply(int ticket, string heard, string said, string after = null, bool following = false)
+        private void Reply(int ticket, string heard, string said, string after = null, bool following = false, bool textOnly = false)
         {
             int input = inputTurn, answer = answerTurn;
             followUp.Drop();
@@ -4613,8 +4615,8 @@ namespace CapriDesktop
             said = ModsReplying(said, source);
             lastReply = said;
             ModsReplied(said, source);
-            string spoken = Speaks ? ModsSpeaking(said) : said;
-            if (!Speaks || Voice.Spoken(spoken).Length == 0) { if (ShowReply(ticket, heard, said, 0, after, following, input, answer)) TypeAlong(said, ticket); return; }
+            string spoken = !textOnly && Speaks ? ModsSpeaking(said) : said;
+            if (textOnly || !Speaks || Voice.Spoken(spoken).Length == 0) { if (ShowReply(ticket, heard, said, 0, after, following, input, answer)) TypeAlong(said, ticket); return; }
             ISpeaker speaker = Speaker;
             int speechTicket = speechGeneration;
             if (!following) Talk.Thinking(heard);
