@@ -39,8 +39,8 @@ def main():
     parser.add_argument("--linux", type=Path, help="optional self-contained Linux publish directory")
     parser.add_argument("--output", required=True, type=Path, help="new output directory")
     args = parser.parse_args()
-    if git("status", "--porcelain", "--untracked-files=no"):
-        parser.error("Commit tracked source changes before packaging")
+    if git("status", "--porcelain", "--untracked-files=normal"):
+        parser.error("Commit source changes and new files before packaging")
     executable = args.windows.resolve(strict=True)
     with executable.open("rb") as binary:
         if binary.read(2) != b"MZ":
