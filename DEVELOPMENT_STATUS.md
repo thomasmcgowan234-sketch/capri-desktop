@@ -26,8 +26,8 @@ Capri's Mainframe, desktop sprite/drag/show-hide behavior, local Ollama and othe
 
 | Requirement | Current limit / next work |
 | --- | --- |
-| Windows launch/install | Privacy checkpoint `b3ad5c6` passed native runtime smoke (1,417 PASS, 0 FAIL, 0 SKIP; 53 explicit limits), installer/payload and silent install/uninstall checks. Automatic-development integration requires its own final CI result in PROGRESS.md; target-PC acceptance remains separate |
-| Natural identity growth | Bounded local reflection now creates cited tentative proposals after direct conversation; only owner review establishes them. Focused schema/coordinator checks pass. Rich journal UI and model-quality/long-session acceptance remain |
+| Windows launch/install | Automatic-development revision `dada185` passed native runtime smoke (1,417 PASS, 0 FAIL, 0 SKIP; 53 explicit limits), installer/payload, silent install/uninstall and complete test-package validation in [run 43324949376](https://github.com/thomasmcgowan234-sketch/capri-desktop/actions/runs/43324949376). Target-PC acceptance remains separate |
+| Natural identity growth | Bounded local reflection creates cited tentative proposals after direct conversation; only owner review establishes them. Focused tests and the live typed-input/review/reload/profile/privacy smoke pass. Rich journal UI and model-quality/long-session acceptance remain |
 | Complete original appearance | Current art is the licensed temporary Capri appearance; import a complete compatible sprite set for full replacement |
 | Physical voice/Discord | Echo cancellation, device routing, interruptions and real call participation need Windows audio/hardware tests |
 | Observation permissions | Verify every capture and tool path with the Windows checklist; inherited features must be exercised under revocation and prompt injection |
@@ -40,10 +40,10 @@ Capri's Mainframe, desktop sprite/drag/show-hide behavior, local Ollama and othe
 
 ## Next acceptance sequence
 
-1. Finish the current revision's full native runtime/installer validation and use the resulting [Windows test build](WINDOWS_TEST_BUILD.md). Keep original Capri and the previous companion unchanged.
+1. Download the validated [Windows test package](https://github.com/thomasmcgowan234-sketch/capri-desktop/actions/runs/43324949376/artifacts/13991699793) and follow the [PC guide](WINDOWS_TEST_BUILD.md). Keep original Capri and the previous companion unchanged.
 2. Configure a local Ollama model; confirm the exact installed tag and image/tool capability instead of assuming the requested model supports all paths.
 3. Exercise automatic draft generation and its off/quiet/performance gates, direct review/correction, schema-1 migration, restart/recovery, appearance replacement/revert and interrupted-update recovery.
 4. Run physical audio, call-origin, observation revocation, dual-monitor/mixed-DPI and low-resource acceptance checks in [TESTING.md](TESTING.md).
 5. Record actual CPU/RAM/VRAM and latency, then address measured regressions before adding more background autonomy.
 
-The privacy-repair checkpoint has full Linux regression/application-smoke and native Windows runtime/installer evidence. Current automatic-development work has 65 C#5 identity checks, 59 C#5 coordinator checks and a successful C#5/net48 SDK compile (12 inherited warnings, zero errors); final integrated counts and CI results belong in `PROGRESS.md`. Cross build has four inherited warnings. No live Qwen3.5/Ollama setup, physical audio/Discord, AMD GPU or dual-monitor acceptance has been performed.
+Current validation: 80 C#5 identity checks, 71 C#5 coordinator checks, 59 integrated production/loopback checks, 15 package-evidence checks, the full local regression script, and 253 fresh application smoke checks pass. C#5/net48 SDK compilation has 12 inherited warnings and zero errors; the Cross publish has four inherited warnings. Hosted Linux, native Windows runtime/installer and complete package validation pass for `dada185`. The macOS job was cancelled without acceptance. No live Qwen3.5/Ollama setup, physical audio/Discord, AMD GPU or dual-monitor acceptance has been performed.

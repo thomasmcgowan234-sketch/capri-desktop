@@ -2,6 +2,8 @@
 
 Use the **companion-test-build** artifact from a successful CI run for the intended source revision. It contains the Windows ZIP, committed source ZIP, `RELEASE.json`, `SHA256SUMS` and the synthetic Windows validation report. This guide describes tests to perform on your PC; it is not evidence that your audio devices, local model or hardware have passed.
 
+Current validated package: [companion 0.1.0 test build](https://github.com/thomasmcgowan234-sketch/capri-desktop/actions/runs/43324949376/artifacts/13991699793), branch revision `dada185`. Native Windows smoke passed 1,417 checks with 53 explicit limits, zero failures and zero skips; installation and package validation also passed. Extract the outer artifact, then extract its `companion-v0.1.0-windows.zip`.
+
 `windows_ci_smoke_passed` records validated automated evidence. `windows_runtime_accepted` and `hardware_accepted` remain false until manual target-PC acceptance is recorded. The manifest records the actual checked-out Git commit, which may be a pull-request merge commit. These are development builds; no code-signing certificate is claimed.
 
 ## Before starting
