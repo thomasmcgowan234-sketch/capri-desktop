@@ -44,6 +44,11 @@ jobs:
           path: |
             out/windows/Capri.exe
             out/windows/Capri-Setup.exe
+            LICENSE.md
+            THIRD-PARTY-NOTICES.md
+            README.md
+            UPDATE_GUIDE.md
+            PRIVACY.md
           if-no-files-found: warn
 
   # Her silent install and uninstall change the runner's own Capri, so they get a fresh runner of their own.
