@@ -1332,7 +1332,29 @@ namespace CapriDesktop
         // Every exchange goes in a daily transcript on this PC, and the picked brain folds older lines into memories.md, which she reads every chat.
         internal static string TranscriptPath;
         internal static string MemoriesPath;
-        internal static volatile bool Keeping = true;
+        private static volatile bool keeping = true;
+        private static int memoryGeneration;
+        private static readonly HashSet<Brain> memoryWorkers = new HashSet<Brain>();
+        internal static bool Keeping
+        {
+            get { return keeping; }
+            set
+            {
+                Brain[] stop = new Brain[0];
+                lock (writing)
+                {
+                    if (keeping == value) return;
+                    keeping = value;
+                    memoryGeneration++;
+                    if (!value) stop = new List<Brain>(memoryWorkers).ToArray();
+                }
+                // Never hold the persistence lock while aborting a transport.
+                foreach (Brain worker in stop)
+                    try { worker.Cancel(); }
+                    catch (Exception error) { Log("memories", -1, "Memory transport cancellation failed: " + error.GetType().Name); }
+            }
+        }
+        internal static int MemoryGeneration { get { lock (writing) return memoryGeneration; } }
         internal static volatile Brain Keeper;
         // Mac and Linux turn this off: their screenshots show her and her bubble, so a glance can take her for part of their
         // screen, and that mustn't become a memory. Her glances still go in the transcript.
@@ -1359,18 +1381,26 @@ namespace CapriDesktop
         // that isn't folded stays out of memories.md.
         internal static void Transcribe(string who, string text, bool folded = true)
         {
-            string folder = TranscriptPath;
+            string folder;
+            int generation;
+            lock (writing)
+            {
+                if (!Keeping) return;
+                folder = TranscriptPath;
+                generation = memoryGeneration;
+            }
             text = Regex.Replace(text ?? "", @"\s+", " ").Trim();
             if (folder == null || !Keeping || text.Length == 0) return;
             DateTime now = DateTime.Now;
             string clock = now.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
             lock (writing)
             {
+                if (!Keeping || generation != memoryGeneration || folder != TranscriptPath) return;
                 try
                 {
                     Directory.CreateDirectory(folder);
                     string day = Path.Combine(folder, now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) + ".md");
-                    if (!File.Exists(day)) File.WriteAllText(day, "# Capri and you, " + now.ToString("dddd d MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture) + "\n> Kept on this PC only, never uploaded. Delete a line or the whole file whenever you like.\n\n");
+                    if (!File.Exists(day)) File.WriteAllText(day, "# Capri and you, " + now.ToString("dddd d MMMM yyyy", System.Globalization.CultureInfo.InvariantCulture) + "\n> Saved locally. Relevant text may be sent to your selected AI provider. Delete a line or the whole file whenever you like.\n\n");
                     File.AppendAllText(day, (who == null ? "*" + clock + " " + text + "*" : "**" + clock + " " + who + ":** " + text) + "\n");
                     if (folded) File.AppendAllText(QueuePath, now.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture) + " " + (who == null ? text : who + ": " + text) + "\n");
                 }
@@ -1427,11 +1457,14 @@ namespace CapriDesktop
 
         internal void FoldSoon()
         {
-            if (BackgroundPaused() || System.Threading.Volatile.Read(ref folding) != 0 || Model == null || DateTime.Now.Ticks < System.Threading.Interlocked.Read(ref foldWait)) return;
+            if (!Keeping || BackgroundPaused() || System.Threading.Volatile.Read(ref folding) != 0 || Model == null || DateTime.Now.Ticks < System.Threading.Interlocked.Read(ref foldWait)) return;
             string path = QueuePath;
             string[] queued;
+            int generation;
             lock (writing)
             {
+                if (!Keeping) return;
+                generation = memoryGeneration;
                 try { queued = path != null && File.Exists(path) ? File.ReadAllLines(path) : new string[0]; }
                 catch (IOException) { return; }
                 catch (UnauthorizedAccessException) { return; }
@@ -1441,10 +1474,10 @@ namespace CapriDesktop
             {
                 // She folds once the chat goes quiet for 20 seconds, so a brain on their PC doesn't hold up a reply.
                 DateTime giveUp = DateTime.Now.AddMinutes(10);
-                while (DateTime.Now < giveUp && DateTime.Now.Ticks - System.Threading.Interlocked.Read(ref lastLine) < TimeSpan.FromSeconds(20).Ticks) System.Threading.Thread.Sleep(2000);
-                if (BackgroundPaused()) { System.Threading.Interlocked.Exchange(ref folding, 0); return; }
+                while (Keeping && MemoryGeneration == generation && DateTime.Now < giveUp && DateTime.Now.Ticks - System.Threading.Interlocked.Read(ref lastLine) < TimeSpan.FromSeconds(20).Ticks) System.Threading.Thread.Sleep(2000);
+                if (!Keeping || MemoryGeneration != generation || BackgroundPaused()) { System.Threading.Interlocked.Exchange(ref folding, 0); return; }
                 string problem;
-                try { problem = Fold(); }
+                try { problem = Fold(generation); }
                 catch (Exception error) { problem = error.GetType().Name + ": " + error.Message; }
                 if (problem != null)
                 {
@@ -1462,15 +1495,24 @@ namespace CapriDesktop
         private bool unhurried;
 
         // One call to the picked brain: memories.md plus the lines waiting in, the new memories.md out. Returns what went wrong, or null.
-        internal string Fold()
+        internal string Fold() { return Fold(null); }
+
+        private string Fold(int? expectedGeneration)
         {
             string queuePath = QueuePath, memoriesPath = MemoriesPath, model = Model;
+            int generation;
+            lock (writing)
+            {
+                if (!Keeping || expectedGeneration.HasValue && expectedGeneration.Value != memoryGeneration) return null;
+                generation = memoryGeneration;
+            }
             if (queuePath == null || memoriesPath == null) return "Her memories have no folder.";
             if (model == null) return Offline;
             string[] waiting;
             string original;
             lock (writing)
             {
+                if (!Keeping || generation != memoryGeneration) return null;
                 waiting = File.Exists(queuePath) ? File.ReadAllLines(queuePath) : new string[0];
                 if (waiting.Length == 0) return null;
                 original = File.Exists(memoriesPath) ? File.ReadAllText(memoriesPath) : null;
@@ -1497,7 +1539,19 @@ namespace CapriDesktop
                     new ChatMessage("system", FoldRules + Now()),
                     new ChatMessage("user", "memories.md now:\n" + (before.Length == 0 ? "(empty)" : before) + "\n\nNew lines from your chat log, oldest first:\n" + string.Join("\n", shared.ToArray()))
                 };
-                string raw = folder.Think(model, messages, false, new List<KeyValuePair<string, ToolArguments>>(), null, 900, -1, false, null, null, true);
+                lock (writing)
+                {
+                    if (!Keeping || generation != memoryGeneration || queuePath != QueuePath || memoriesPath != MemoriesPath) return null;
+                    memoryWorkers.Add(folder);
+                }
+                string raw;
+                try { raw = folder.Think(model, messages, false, new List<KeyValuePair<string, ToolArguments>>(), null, 900, 0, false, null, null, true); }
+                catch (WebException)
+                {
+                    if (!Keeping || generation != MemoryGeneration) return null;
+                    throw;
+                }
+                finally { lock (writing) memoryWorkers.Remove(folder); }
                 List<string> kept = new List<string>();
                 HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (string line in Visible(raw).Split('\n'))
@@ -1518,6 +1572,8 @@ namespace CapriDesktop
             }
             lock (writing)
             {
+                // Off -> on is a new consent generation; an older result cannot consume its backlog.
+                if (!Keeping || generation != memoryGeneration || queuePath != QueuePath || memoriesPath != MemoriesPath) return null;
                 if (!string.Equals(original, File.Exists(memoriesPath) ? File.ReadAllText(memoriesPath) : null, StringComparison.Ordinal)) return "Her memories changed while she was updating them. She'll try again.";
                 if (after != null) File.WriteAllText(memoriesPath, MemoriesHead + after + "\n");
                 // Lines written while she was folding wait for next time.

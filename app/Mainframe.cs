@@ -940,7 +940,7 @@ namespace CapriDesktop
             discord = Switch("Show on Discord", c, 708, delegate { if (!syncing) capri.ToggleDiscord(); });
             cursor = Switch("Use her cursor", c, 736, delegate { if (!syncing) capri.ToggleCursor(); });
             remembering = Switch("Remember our chats", c, 764, delegate { if (!syncing) capri.ToggleRemembering(); });
-            remembering.AccessibleName = "Remember our chats. She keeps daily transcripts and memories.md on this PC, never uploaded";
+            remembering.AccessibleName = "Remember our chats. Transcripts and memories are saved locally; relevant text may be sent to your selected AI provider. Off stops recording, retrieval and background summaries.";
             // SECURITY took Blackwall mode's place (Lachy, 29 Oct): its button opens her SECURITY window, and the line under it
             // says what the preset does. Blackwall mode is its Blackwall preset now.
             security = Make("Security: " + Security.PresetName, 28 + c, 795, 328, 22, delegate { OpenSecurity(); });

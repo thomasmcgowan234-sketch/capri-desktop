@@ -45,4 +45,6 @@ Blocking upstream executable replacement is not automatic cryptographic signatur
 
 Structured identity correction/forgetting affects its own current records. Inherited `me.md`, `memories.md`, daily transcripts and historical backups are separate stores; use their editors/settings when correcting or erasing the corresponding text. Quiet-hour settings contain schedule/resource fields, separate from personal memories.
 
+Turning off Remember our chats stops transcript recording, summary/transcript retrieval and new background memory folding. Queued folding checks the setting again after its idle wait; active folds are cancelled where the transport supports it and their results cannot rewrite summaries or consume queued lines after revocation. Switching off then on creates a new consent generation, so an older result remains invalid. Already-sent requests cannot be retracted. Explicit editable `me.md` notes and current chat remain separate; the switch does not erase saved files.
+
 Companion management commands display their responses as text; they do not synthesize identity records or privacy status through local/cloud voice services or call routing. Normal conversation still uses the voice provider you selected.

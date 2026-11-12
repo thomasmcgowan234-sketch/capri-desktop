@@ -82,6 +82,7 @@ static class Program
             Brain.Keeping = true;
             Check(Brain.Memories().Contains("marigold observatory") && Brain.IdentityContext().Contains("Rowan"), "re-enabling memory restores saved context without deleting or promoting it");
             Brain.MemoriesPath = Brain.TranscriptPath = null;
+            MemoryPrivacyChecks.Run(Check);
             CompanionObservation.Configure();
             int before = provider.Calls;
             Check(Denied(() => brain.See(new byte[] { 1 }, "system", "fixture", 10, selected: true)) && provider.Calls == before, "screen denial occurs before provider sees any image");

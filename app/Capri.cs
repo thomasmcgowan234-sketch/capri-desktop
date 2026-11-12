@@ -46831,7 +46831,7 @@ namespace CapriDesktop
                                         Brain.Unsee();
                                         string written = File.ReadAllText(todayFile);
                                         string[] queued = File.ReadAllLines(queueFile);
-                                        bool transcribed = written.StartsWith("# Capri and you, ", StringComparison.Ordinal) && written.IndexOf("> Kept on this PC only, never uploaded.", StringComparison.Ordinal) >= 0
+                                        bool transcribed = written.StartsWith("# Capri and you, ", StringComparison.Ordinal) && written.IndexOf("> Saved locally. Relevant text may be sent to your selected AI provider.", StringComparison.Ordinal) >= 0
                                             && System.Text.RegularExpressions.Regex.IsMatch(written, @"\n\*\*\d\d:\d\d You:\*\* I finally beat Malenia after 40 tries\n\*\*\d\d:\d\d You:\*\* did you see that\?\n\*\*\d\d:\d\d Capri:\*\* Forty tries, choom\. Legend\.\n\*\*\d\d:\d\d Capri:\*\* GG\.\n\*\d\d:\d\d She glanced at your screen: Elden Ring, a victory screen\. She stayed quiet\.\*\n\*\d\d:\d\d Job: Opened Spotify\.\*\n$")
                                             && queued.Length == 6 && queued[0].StartsWith(todayName + " ", StringComparison.Ordinal) && queued[0].EndsWith(" You: I finally beat Malenia after 40 tries", StringComparison.Ordinal) && queued[5].EndsWith(" Job: Opened Spotify.", StringComparison.Ordinal);
                                         if (!transcribed) throw new Exception("Her transcript wasn't written right: " + written + " / " + string.Join(" | ", queued));
