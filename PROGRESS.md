@@ -34,3 +34,7 @@ The designated projectless `/codex/.../output` directory is not writable in this
 ## Saved branch and packaging
 
 The development branch was pushed successfully to `https://github.com/thomasmcgowan234-sketch/capri-desktop/tree/companion/persistent-identity`; main is unchanged. `ci/package-companion.py` creates source/Windows/Linux archives with notices, release provenance and checksums without publishing a release. Windows PE metadata has IL-only AnyCPU flags with neither 32-bit-required nor prefer-32-bit set.
+
+## Hosted CI follow-up
+
+Draft PR #1 is open in the user's fork, with main unchanged. The first hosted Linux CI run (43214876843) exposed a scheduling race in the inherited game cancellation fixture: its fake model watched the parent token and could unwind/dispose the linked callback before the cancellation callback ran. The fixture now waits for the actual `CancelInference` callback, matching the real transport, and still requires prompt completion and zero input delivery. The repaired game-session suite passes locally. The fix is pushed for a complete hosted rerun; Windows/macOS jobs were still queued at inspection and are not counted as verified.

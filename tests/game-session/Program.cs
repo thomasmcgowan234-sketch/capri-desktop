@@ -74,7 +74,25 @@ internal static class Program
             var(r,j,d,i)=Setup();j.Delivered.UnionWith(Enumerable.Range(0,ComputerGameSession.DeliveryLimit).Select(x=>x.ToString()));r.Think=(b,p,q)=>{using var json=JsonDocument.Parse(q);return Action(json.RootElement.GetProperty("frame").GetString(),previous:"none");};string result=ComputerJobs.RunGame(r,j,CancellationToken.None);Check(i.Actions==0&&j.Delivered.Count==ComputerGameSession.DeliveryLimit&&result.Contains("safety capacity"),"bounded session capacity preserves records and reports a stop rather than fake completion");
         }
         {
-            var(r,j,d,i)=Setup();using var cancel=new CancellationTokenSource();using var started=new ManualResetEventSlim();int aborted=0;r.CancelInference=()=>Interlocked.Increment(ref aborted);r.Think=(b,p,q)=>{started.Set();cancel.Token.WaitHandle.WaitOne();cancel.Token.ThrowIfCancellationRequested();return "";};var work=Task.Run(()=>{try{ComputerJobs.RunGame(r,j,cancel.Token);}catch(OperationCanceledException){}});Check(started.Wait(2000),"thinking fixture started");cancel.Cancel();Check(work.Wait(2000)&&i.Actions==0&&aborted>0,"Stop cancels a thinking turn before input");
+            var(r,j,d,i)=Setup();
+            using var cancel=new CancellationTokenSource();
+            using var started=new ManualResetEventSlim();
+            using var inferenceCancelled=new ManualResetEventSlim();
+            int aborted=0;
+            r.CancelInference=()=>{Interlocked.Increment(ref aborted);inferenceCancelled.Set();};
+            // A real model transport stops through CancelInference, not by observing
+            // the parent token itself. Waiting on the parent let this fixture unwind
+            // and dispose the linked registration before its callback ran on busy CI.
+            r.Think=(b,p,q)=>
+            {
+                started.Set();
+                if(!inferenceCancelled.Wait(5000))throw new TimeoutException("Model cancellation callback was not delivered.");
+                throw new OperationCanceledException(cancel.Token);
+            };
+            var work=Task.Run(()=>{try{ComputerJobs.RunGame(r,j,cancel.Token);}catch(OperationCanceledException){}});
+            Check(started.Wait(2000),"thinking fixture started");
+            cancel.Cancel();
+            Check(work.Wait(2000)&&i.Actions==0&&aborted>0,"Stop cancels a thinking turn before input");
         }
         {
             var(r,j,d,i)=Setup();using var cancel=new CancellationTokenSource();using var started=new ManualResetEventSlim();bool held=false;i.During=(a,t)=>{held=true;started.Set();try{t.WaitHandle.WaitOne();t.ThrowIfCancellationRequested();}finally{held=false;}};r.Think=(b,p,q)=>{using var json=JsonDocument.Parse(q);return Action(json.RootElement.GetProperty("frame").GetString(),previous:"none");};var work=Task.Run(()=>{try{ComputerJobs.RunGame(r,j,cancel.Token);}catch(OperationCanceledException){}});Check(started.Wait(2000),"acting fixture started");cancel.Cancel();Check(work.Wait(2000)&&i.Actions==1&&!held,"Stop propagates through acting turn and its held-input cleanup");
