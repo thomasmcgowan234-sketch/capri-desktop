@@ -24,7 +24,7 @@ Capri's Mainframe, desktop sprite/drag/show-hide behavior, local Ollama and othe
 
 | Requirement | Current limit / next work |
 | --- | --- |
-| Windows launch/install | Actual net48/C#5 Windows executable cross-build passes using official reference packages; launch, native-compiler smoke and install acceptance remain Windows tasks |
+| Windows launch/install | Both SDK cross-build and native Windows CI build pass; silent install/uninstall with data preservation passes on Windows CI. Runtime smoke and target-PC acceptance are recorded separately in PROGRESS.md |
 | Natural identity growth | Reviewed explicit commands provide a conservative durable path; automatic evidence extraction/reflection and rich journal UI require further development |
 | Complete original appearance | Current art is the licensed temporary Capri appearance; import a complete compatible sprite set for full replacement |
 | Physical voice/Discord | Echo cancellation, device routing, interruptions and real call participation need Windows audio/hardware tests |

@@ -229,6 +229,10 @@ namespace CapriDesktop
                             Dispatcher.UIThread.Post(() => { if (!cancellation.IsCancellationRequested && window.IsVisible) window.Activate(); });
                         }
                     }
+                    // A transport may return a completed policy reply while Hide
+                    // cancels its owner. Do not drain/complete that hidden session's
+                    // fences as ordinary false results after the await.
+                    cancellation.ThrowIfCancellationRequested();
                     var completing = new List<TaskCompletionSource<bool>>();
                     while (fences.TryDequeue(out var fence)) completing.Add(fence);
                     MoveRequest move = Interlocked.Exchange(ref pendingMove, null);
@@ -237,7 +241,11 @@ namespace CapriDesktop
                         bool applied = move == null || await Move(address, move, cancellation).ConfigureAwait(false);
                         var state = desktop.VisualSnapshot;
                         applied &= state != null && !state.Locked && visible == owner;
-                        foreach (var fence in completing) fence.TrySetResult(applied);
+                        foreach (var fence in completing)
+                        {
+                            if (cancellation.IsCancellationRequested || visible != owner) fence.TrySetCanceled();
+                            else fence.TrySetResult(applied);
+                        }
                     }
                     catch (Exception error) { foreach (var fence in completing) fence.TrySetException(error); throw; }
                     await wake.WaitAsync(200, cancellation).ConfigureAwait(false);

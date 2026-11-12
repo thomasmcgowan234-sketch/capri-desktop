@@ -56,7 +56,7 @@ internal static class Program {
   await ReplyResizeChecks();
   var d=new HyprlandDesktop();var w=Make(d);Check(await NativeSurface.FlushMoves(w).WaitAsync(TimeSpan.FromSeconds(2))==false,"no visible worker returns false immediately");
   foreach(var mode in new[]{"locked","stale-layout","hidden","normal"}){
-   d=new(){HoldApply=true};w=Make(d);w.Show();await d.ApplyEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));NativeSurface.TryMove(w,new(50,60));var fence=NativeSurface.FlushMoves(w);Check(!fence.IsCompleted,mode+" release fence waits behind active worker");
+   d=new(){HoldApply=true,IgnoreApplyCancellation=mode=="hidden"};w=Make(d);w.Show();await d.ApplyEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));NativeSurface.TryMove(w,new(50,60));var fence=NativeSurface.FlushMoves(w);Check(!fence.IsCompleted,mode+" release fence waits behind active worker");
    if(mode=="locked")d.LockAtFinalProperty=true;if(mode=="stale-layout")d.VisualSnapshot.LayoutId="new-layout";
    if(mode=="hidden")w.Hide();d.ApplyRelease.SetResult();
    if(mode=="hidden"){bool canceled=false;try{await fence.WaitAsync(TimeSpan.FromSeconds(2));}catch(OperationCanceledException){canceled=true;}Check(canceled,"hide cancels pending release fence");}
