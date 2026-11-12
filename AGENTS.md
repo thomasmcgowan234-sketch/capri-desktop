@@ -29,6 +29,8 @@ Use synthetic data in temporary profiles. Read [TESTING.md](TESTING.md) for comm
 
 For identity/development changes, run `tests/companion/CompanionIdentityChecks.csproj`, `tests/development/CompanionDevelopmentChecks.csproj` and `tests/companion-integration/CompanionIntegrationChecks.csproj` before full application validation. Keep the blocked-provider memory revocation tests and real loopback transport checks: a stale completion must neither save private state nor consume queued transcript lines. Compilation and synthetic checks do not establish target-PC model, audio or gaming acceptance.
 
+CI runs on pull requests, main pushes and manual dispatch. Keep one PR run per development revision; duplicate push/PR full Windows runs are unnecessary. A branch without a PR can use manual dispatch.
+
 For this prepared cloud environment, each new shell must source `/workspace/.capri-env/activate.sh`; `/workspace/.capri-env/START.md` documents retained SDK/native dependencies and isolated smoke tests. Those environment files are setup helpers, not files to distribute with the application.
 
 Update status and progress after each coherent change. Describe actual implemented behavior, test evidence, residual gaps and concrete next steps. Keep a runnable integrated application; do not report interfaces or planned modules as completed services. Do not remove required licence notices when rebranding or packaging.
