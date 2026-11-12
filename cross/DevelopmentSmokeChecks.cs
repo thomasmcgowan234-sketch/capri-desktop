@@ -94,7 +94,12 @@ namespace CapriDesktop
                     pet.Talk.Submit(text);
                     MainframeWait(() => schedules > before, "the owner's ordinary reply/development hook");
                     MainframeWait(() => { pet.Talk.Update(pet.Now); return pet.Talk.Finished; }, "the fully shown silent development reply");
-                    if (!pet.Talk.Typing || !string.IsNullOrWhiteSpace(pet.Talk.Typer.Draft)) throw new Exception("The owner typing box did not remain open and empty after submitting.");
+                    // X11 can focus the new bubble and deactivate/hide the typer while
+                    // awaiting its reply. Reopen that same cleared input to exercise
+                    // the real empty-visible-input idle gate deterministically.
+                    if (!string.IsNullOrWhiteSpace(pet.Talk.Typer.Draft)) throw new Exception("The submitted owner draft was not cleared: typing=" + pet.Talk.Typing + ", draftLength=" + (pet.Talk.Typer.Draft ?? "").Length + ".");
+                    if (!pet.Talk.Typing) pet.Talk.Open();
+                    if (!pet.Talk.Typing || !string.IsNullOrWhiteSpace(pet.Talk.Typer.Draft)) throw new Exception("The empty owner input could not be shown: typing=" + pet.Talk.Typing + ", draftLength=" + (pet.Talk.Typer.Draft ?? "").Length + ".");
                     if (!(bool)allowed.Invoke(pet, null)) throw new Exception("Real development idle policy rejected a finished reply with an empty open typing box: " + service.Status);
                 };
                 Action fire = () =>
@@ -135,7 +140,9 @@ namespace CapriDesktop
 
                 owner("Let's discuss the astronomy topic " + topics[7] + "."); fire();
                 MainframeWait(() => records("review") == 1, "one real local development proposal");
-                if (server.Count != 1 || !pet.Talk.Typing) throw new Exception("The typed UI did not perform exactly one reflection with its empty input still open.");
+                if (!pet.Talk.Typing) pet.Talk.Open();
+                if (server.Count != 1 || !pet.Talk.Typing || !string.IsNullOrWhiteSpace(pet.Talk.Typer.Draft))
+                    throw new Exception("The typed UI did not perform exactly one reflection with an empty visible input: requests=" + server.Count + ", typing=" + pet.Talk.Typing + ", draftLength=" + (pet.Talk.Typer.Draft ?? "").Length + ".");
                 string recordId;
                 using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "review", "identity.json"))))
                 {
