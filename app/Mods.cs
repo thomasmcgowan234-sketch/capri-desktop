@@ -125,6 +125,7 @@ namespace CapriDesktop
             string[] files;
             try
             {
+                RecoverSkins();
                 off = Off();
                 files = new string[0];
                 if (Directory.Exists(folder))

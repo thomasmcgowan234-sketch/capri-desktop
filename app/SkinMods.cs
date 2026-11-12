@@ -81,18 +81,91 @@ namespace CapriDesktop
             return read;
         }
 
-        private Mod ImportSkin(string file, bool turnOn)
+        // Each replacement keeps the exact preceding package. These are data-only zips, never executable mods.
+        private string SkinHistory(string id) { return Path.Combine(folder, "appearance-history", id); }
+
+        internal string[] SkinVersions(Mod mod)
+        {
+            if (mod == null || !mod.Skin) return new string[0];
+            string home = SkinHistory(mod.File.Id);
+            if (!Directory.Exists(home)) return new string[0];
+            string[] files = Directory.GetFiles(home, "*" + SkinExtension);
+            Array.Sort(files, StringComparer.Ordinal);
+            Array.Reverse(files);
+            return files;
+        }
+
+        internal bool CanRestoreSkin(Mod mod)
+        {
+            try { return SkinVersions(mod).Length > 0; }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+
+        internal Mod RestoreSkin(Mod mod)
+        {
+            if (mod == null || !mod.Skin) throw new ModException("Choose an installed skin to revert.");
+            string[] versions = SkinVersions(mod);
+            if (versions.Length == 0) throw new ModException("That skin has no previous appearance yet.");
+            return ImportSkin(versions[0], false, mod.File.Id);
+        }
+
+        private Mod ImportSkin(string file, bool turnOn) { return ImportSkin(file, turnOn, null); }
+
+        private Mod ImportSkin(string file, bool turnOn, string expectedId)
         {
             string unpacking = Path.Combine(folder, "skin-import-" + Guid.NewGuid().ToString("N"));
+            string transaction = null, transactionId = null;
             try
             {
                 if (new FileInfo(file).Length > LargestSkin) throw new ModException("That skin is too big. The limit is " + LargestSkin / (1024 * 1024) + " MB.");
                 Directory.CreateDirectory(unpacking);
-                ModFile read = Unpack(file, unpacking);
+                // Validate the same immutable copy that is installed, even when the source is an installed/history package.
+                string incoming = Path.Combine(unpacking, "new" + SkinExtension), art = Path.Combine(unpacking, "new-art");
+                File.Copy(file, incoming);
+                if (new FileInfo(incoming).Length > LargestSkin) throw new ModException("That skin changed or exceeded the package size limit while reading it.");
+                Directory.CreateDirectory(art);
+                ModFile read = Unpack(incoming, art);
+                if (expectedId != null && read.Id != expectedId) throw new ModException("That saved appearance belongs to a different skin.");
                 string home = SkinHome(read.Id), kept = Path.Combine(folder, read.Id + SkinExtension);
-                if (Directory.Exists(home)) Directory.Delete(home, true);
-                Directory.Move(unpacking, home);
-                if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(kept), StringComparison.OrdinalIgnoreCase)) File.Copy(file, kept, true);
+                transactionId = read.Id;
+                transaction = Path.Combine(folder, read.Id + "-skin-transaction");
+                RecoverSkin(transaction, read.Id);
+                if (File.Exists(kept))
+                {
+                    string history = SkinHistory(read.Id);
+                    Directory.CreateDirectory(history);
+                    // The sequence, rather than wall-clock time, defines the preceding version even after a clock change.
+                    long sequence = 0;
+                    foreach (string old in Directory.GetFiles(history, "*" + SkinExtension))
+                    {
+                        string name = Path.GetFileName(old);
+                        int dash = name.IndexOf('-');
+                        long parsed;
+                        if (dash > 0 && long.TryParse(name.Substring(0, dash), out parsed)) sequence = Math.Max(sequence, parsed);
+                    }
+                    if (sequence == long.MaxValue) throw new ModException("That skin has too many saved versions.");
+                    string saved = Path.Combine(history, (sequence + 1).ToString("D20", System.Globalization.CultureInfo.InvariantCulture) + "-" + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffffffZ") + "-" + Guid.NewGuid().ToString("N") + SkinExtension);
+                    string saving = saved + ".new";
+                    try
+                    {
+                        File.Copy(kept, saving);
+                        File.Move(saving, saved);
+                    }
+                    finally { if (File.Exists(saving)) File.Delete(saving); }
+                }
+                // Intent markers are complete before the atomic directory rename makes a transaction discoverable.
+                File.WriteAllText(Path.Combine(unpacking, "intent"), read.Id);
+                if (Directory.Exists(home)) File.WriteAllText(Path.Combine(unpacking, "had-art"), "");
+                if (File.Exists(kept)) File.WriteAllText(Path.Combine(unpacking, "had-package"), "");
+                Directory.Move(unpacking, transaction);
+                if (Directory.Exists(home)) Directory.Move(home, Path.Combine(transaction, "old-art"));
+                if (File.Exists(kept)) File.Move(kept, Path.Combine(transaction, "old" + SkinExtension));
+                Directory.Move(Path.Combine(transaction, "new-art"), home);
+                File.Move(Path.Combine(transaction, "new" + SkinExtension), kept);
+                File.WriteAllText(Path.Combine(transaction, "committed"), "");
+                RecoverSkin(transaction, read.Id);
+                transaction = null;
                 if (turnOn)
                 {
                     HashSet<string> off = Off();
@@ -108,10 +181,57 @@ namespace CapriDesktop
             catch (UnauthorizedAccessException error) { throw new ModException("Couldn't save that skin: " + error.Message); }
             finally
             {
+                // A normal I/O failure rolls back immediately; a process interruption is recovered on the next Load.
+                if (transaction != null)
+                {
+                    try { RecoverSkin(transaction, transactionId); }
+                    catch (IOException error) { Brain.Log("mods", -1, "Skin recovery: " + error.Message); }
+                    catch (UnauthorizedAccessException error) { Brain.Log("mods", -1, "Skin recovery: " + error.Message); }
+                }
                 try { if (Directory.Exists(unpacking)) Directory.Delete(unpacking, true); }
                 catch (IOException error) { Brain.Log("mods", -1, error.Message); }
                 catch (UnauthorizedAccessException error) { Brain.Log("mods", -1, error.Message); }
             }
+        }
+
+        internal void RecoverSkins()
+        {
+            if (!Directory.Exists(folder)) return;
+            const string suffix = "-skin-transaction";
+            foreach (string transaction in Directory.GetDirectories(folder, "*" + suffix))
+            {
+                string name = Path.GetFileName(transaction), id = name.Substring(0, name.Length - suffix.Length);
+                if (!GoodId.IsMatch(id)) continue;
+                try { RecoverSkin(transaction, id); }
+                catch (IOException error) { Problems.Add("Skin recovery for " + id + ": " + error.Message); }
+                catch (UnauthorizedAccessException error) { Problems.Add("Skin recovery for " + id + ": " + error.Message); }
+            }
+        }
+
+        // Without a commit marker, restore both old pieces; recovery itself is safe to repeat after another interruption.
+        private void RecoverSkin(string transaction, string id)
+        {
+            if (!Directory.Exists(transaction)) return;
+            string intent = Path.Combine(transaction, "intent");
+            if (!File.Exists(intent) || File.ReadAllText(intent) != id) throw new IOException("The pending skin transaction has no valid intent; it was left intact for recovery.");
+            if (!File.Exists(Path.Combine(transaction, "committed")))
+            {
+                string home = SkinHome(id), kept = Path.Combine(folder, id + SkinExtension);
+                string oldArt = Path.Combine(transaction, "old-art"), oldPackage = Path.Combine(transaction, "old" + SkinExtension);
+                if (Directory.Exists(oldArt))
+                {
+                    if (Directory.Exists(home)) Directory.Delete(home, true);
+                    Directory.Move(oldArt, home);
+                }
+                else if (!File.Exists(Path.Combine(transaction, "had-art")) && Directory.Exists(home)) Directory.Delete(home, true);
+                if (File.Exists(oldPackage))
+                {
+                    if (File.Exists(kept)) File.Delete(kept);
+                    File.Move(oldPackage, kept);
+                }
+                else if (!File.Exists(Path.Combine(transaction, "had-package")) && File.Exists(kept)) File.Delete(kept);
+            }
+            Directory.Delete(transaction, true);
         }
 
         private static ModFile Unpack(string file, string into)

@@ -256,6 +256,7 @@ namespace CapriDesktop
         private string WatchWith(string action)
         {
             if (action == "stop") { EndWatchAlong(); return "Done watching with you."; }
+            if (BackgroundPaused) return "Power saver is Always. Set it to Off or In games to watch together.";
             if (CallModeOn) return "Turn call mode off before watching PC audio with me.";
             if (watchAlong != null) return "I'm watching with you.";
             StopExplore();
@@ -267,7 +268,7 @@ namespace CapriDesktop
             watching.CanHear = testing || parakeet.Ready || Hearing.Available;
             watching.Recognize = delegate(short[] samples) { return parakeet.Ready ? Hearing.Clean(parakeet.Hear(samples)) : Hearing.Text(samples); };
             watching.Speaking = delegate { return PcEars.Speaking(); };
-            watching.Paused = delegate { return PcEars.Active || working != null; };
+            watching.Paused = delegate { return BackgroundPaused || PcEars.Active || working != null; };
             watching.Heard = delegate(string line) { Post(delegate { WatchHeard(watching, line); }); };
             watching.Problem = delegate(string problem) { Post(delegate { WatchProblem(watching, problem); }); };
             watchAlong = watching;
@@ -300,7 +301,7 @@ namespace CapriDesktop
 
         private void WatchHeard(WatchAlong watching, string line)
         {
-            if (CallModeOn || watchAlong != watching) return;
+            if (BackgroundPaused || CallModeOn || watchAlong != watching) return;
             KeepWatchFold(watching, watching.Memory.Add(line));
         }
 
@@ -318,7 +319,7 @@ namespace CapriDesktop
 
         private bool WatchFree()
         {
-            return !Hushed && working == null && !MidJob(job) && (!chatting || local && earsReady && !earsShut || !local && !MicOpen)
+            return !BackgroundPaused && !Hushed && working == null && !MidJob(job) && (!chatting || local && earsReady && !earsShut || !local && !MicOpen)
                 && !typer.Visible && !menu.Visible && !pushing && !transcribing && !dragging && !pressed && !quitting && !PcEars.Active && speech == null
                 && talkState == TalkState.Off && !speaker.Busy && clock.Elapsed.TotalSeconds >= voiceUntil && answerVoice != asking
                 && unchecked(Environment.TickCount - micTalked) >= 1500;
@@ -329,6 +330,7 @@ namespace CapriDesktop
             if (CallModeOn) { if (watchAlong != null) EndWatchAlong(); return; }
             WatchAlong watching = watchAlong;
             if (watching == null) return;
+            if (BackgroundPaused) { watching.MovedAt = now; return; }
             if (!preferences.CaughtUp) watching.Folds.Clear();
             if (working != null || MidJob(job) || PcEars.Active) watching.MovedAt = now;
             if (watching.AudioAvailable) watching.MovedAt = Math.Max(watching.MovedAt, now - watching.QuietFor);

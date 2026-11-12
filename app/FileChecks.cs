@@ -70,7 +70,7 @@ namespace CapriDesktop
         private void SmokeFileEditor(List<string> checks, string output)
         {
             // Her real files stay out of this: every path below is in a folder made for it, inside her smoke test's own data folder.
-            string real = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Capri")) + Path.DirectorySeparatorChar;
+            string real = Path.GetFullPath(Packaged.Home(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))) + Path.DirectorySeparatorChar;
             string folder = Path.Combine(Path.GetDirectoryName(settingsPath), "file-editor-" + Guid.NewGuid().ToString("N"));
             if (Path.GetFullPath(folder).StartsWith(real, StringComparison.OrdinalIgnoreCase)) throw new Exception("The file editor's smoke test would have run in her real data folder.");
             string notesWas = Brain.MemoryPath, personalityWas = Brain.PersonalityPath, safetyWas = Brain.Stamp(Brain.Safety);

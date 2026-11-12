@@ -160,6 +160,8 @@ namespace CapriDesktop
 
         private static void Comment(string kind, string detail, string game, byte[] before, byte[] after, string[] recent, int pace, int died, Stopwatch took, bool live)
         {
+            // Recheck after queueing: a performance-mode change can happen before this worker starts.
+            if (Pace == Off || !(live ? Reactions.Running : Free())) { lock (gate) thinking = false; return; }
             string line = "";
             bool flagged = false, moments = false, broke = false;
             try
@@ -544,7 +546,7 @@ namespace CapriDesktop
         private bool CommentFree()
         {
             double now = clock.Elapsed.TotalSeconds;
-            if (Hushed || (hidden && !docked) || quitting || pushing || transcribing || typer.Visible || PlayingGame) return false;
+            if (BackgroundPaused || Hushed || (hidden && !docked) || quitting || pushing || transcribing || typer.Visible || PlayingGame) return false;
             if (speaker.Busy || now < voiceUntil) return false;
             if (unchecked(Environment.TickCount - micTalked) < 1500) return false;
             return working != null || (talkState != TalkState.Thinking && talkState != TalkState.Talking);
@@ -565,6 +567,7 @@ namespace CapriDesktop
 
         private void CommentSay(string line, string kind, GameMood mood)
         {
+            if (BackgroundPaused) return;
             string game = Commentary.Game();
             if (game == null || !Computer.ScreenNames(line, game)) return;
             // With her live reactions on, every game line of hers goes up in their feed over the game, as text even while she

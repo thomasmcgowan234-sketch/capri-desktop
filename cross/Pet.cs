@@ -638,7 +638,7 @@ namespace CapriDesktop
         internal Pet(IClassicDesktopStyleApplicationLifetime desktop)
         {
             this.desktop = desktop;
-            folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri");
+            folder = CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             if (OperatingSystem.IsLinux() && Program.Smoke == null) Listen = new Ears(folder).Listen;
             fresh = Program.Smoke == null && !File.Exists(Path.Combine(folder, "cross.json"));
             Saved = Program.Smoke != null ? new Settings() : Load();
@@ -648,7 +648,7 @@ namespace CapriDesktop
             fingers = Program.Smoke == null && (OperatingSystem.IsMacOS() ? MacFingers.Available : ComputerJobs.Supported || Fingers.Problem == null);
             Security.Has = delegate(int toggle) { return toggle <= Security.Power || (toggle == Security.Mouse && (OperatingSystem.IsMacOS() && Program.Smoke == null ? MacFingers.Available : fingers)) || toggle == Security.Personal || toggle == Security.ModTools || (toggle == Security.Terminal && TerminalJobs.Supported); };
             Hands.OwnHands = fingers;
-            Security.Load(Saved.Permissions);
+            Security.Load(Program.Smoke == null && Saved.Permissions == null ? Security.Of(Security.Guarded) : Saved.Permissions);
             Security.Changed = delegate { Saved.Permissions = Security.Saved; Save(); if (ContextMenu != null) Sync(); };
             LoginFile = Program.Smoke != null ? Path.Combine(Program.Smoke, OperatingSystem.IsMacOS() ? "capri.plist" : "capri.desktop") : Limbs.LoginFile();
             // A copy that moved since they ticked it takes the login entry over, so it doesn't point at the old place.
@@ -667,6 +667,11 @@ namespace CapriDesktop
             StartVault();
             // Their personality.md, made only when they pick Edit (back in 0.8.0). Her safety lines stay in her code after it.
             Brain.PersonalityPath = Path.Combine(Program.Smoke ?? folder, Brain.PersonalityName);
+            if (Program.Smoke == null)
+            {
+                Brain.Identity = new CompanionIdentity(Path.Combine(folder, "companion"));
+                CompanionObservation.Configure();
+            }
             // Remember our chats, like on Windows: every chat goes in a daily transcript, and the brain they picked folds older
             // lines into memories.md, which she reads every chat.
             Brain.MemoriesPath = Path.Combine(Program.Smoke ?? folder, "memories.md");
@@ -1063,7 +1068,7 @@ namespace CapriDesktop
             CheckStyle();
             CheckSelfTools();
             if (presence != null && now >= nextStatus) { nextStatus = now + 1; presence.Show(Saved.NoDiscord ? null : Doing); }
-            if (Program.Smoke == null && now >= nextUpdate) { nextUpdate = now + 6 * 3600; CheckUpdate(); }
+            // Fork releases are installed manually; never poll the original author's feed.
             ShowUnreadableNotice();
             if (UpdateNews != null && !away && !dragging && Talk.Quiet) { Talk.Answer("(update)", UpdateNews); UpdateNews = null; }
             if (outro != null && now >= outroAt) { Action next = outro; outro = null; next(); }
@@ -1143,6 +1148,13 @@ namespace CapriDesktop
 
         internal void CheckUpdate(bool asked = false)
         {
+            if (Program.Smoke == null)
+            {
+                updateNote = CompanionProfile.UpdateMessage;
+                if (asked) UpdateNews = updateNote;
+                NotifySettings();
+                return;
+            }
             updateAsked |= asked;
             if (updateChecking) return;
             updateChecking = true;
@@ -1166,12 +1178,7 @@ namespace CapriDesktop
 
         private static string FetchUpdate()
         {
-            using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) })
-            {
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Capri-Desktop");
-                client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-                return client.GetStringAsync(LatestRelease).GetAwaiter().GetResult();
-            }
+            throw new InvalidOperationException(CompanionProfile.UpdateMessage);
         }
 
         // A newer finished release puts "Get Capri X" in her menu, and she mentions it once per version.
@@ -4436,6 +4443,18 @@ namespace CapriDesktop
                 bool fromMod = modSendDepth > 0 || sent != text;
                 text = sent;
                 if (fromMod) Security.ModSaid(text); else Security.TheySaid();
+            }
+            if (modSendDepth == 0 && !Security.FromMod(text))
+            {
+                string companion = Brain.CompanionCommand(text);
+                if (companion != null)
+                {
+                    Brain.Cancel();
+                    if (text.Equals("/observe stop", StringComparison.OrdinalIgnoreCase)) { Eyes.Stop(); StopNativeWork(); }
+                    Reply(++asking, text, companion);
+                    return;
+                }
+                Brain.IdentityEvidence(text);
             }
             ModList.LogHearing(text, true);
             Typed();

@@ -950,7 +950,7 @@ namespace CapriDesktop
             blackwallNote.TextAlign = ContentAlignment.MiddleRight;
             blackwallNote.Bounds = new Rectangle(28 + c, 819, 328, 18);
             // Power saver: Off, In games or Always (issue #111). Simple Settings keeps it; the rows from Perch down fold under it.
-            powerSaver = Setting("Power saver", SaverNames, c, 840, "Power saver: how lightly she runs in games, or always");
+            powerSaver = Setting("Power saver", SaverNames, c, 840, "Power saver: In games reduces rendering and polling. Always also pauses background inference and autonomous interactions. Direct chat remains available.");
             powerSaverName = new Readout(powerSaver);
             powerSaver.Changed += delegate { if (syncing) return; powerSaverName.Text = SaverNames[powerSaver.Value]; capri.SetPowerSaver(powerSaver.Value); };
             int afterSaver = Controls.Count;

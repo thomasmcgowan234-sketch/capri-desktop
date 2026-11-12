@@ -11,9 +11,15 @@ python3 "$root/tests/native-bridge/terminal_supervisor_checks.py"
 python3 "$root/tests/native-bridge/mac_process_checks.py"
 python3 "$root/tests/native-bridge/mac_sandbox_checks.py"
 python3 "$root/tests/upstream-release/run.py"
+python3 "$root/tests/voice-state/run.py"
 
 python3 "$root/tests/native-bridge/name_listening_checks.py"
 python3 "$root/tests/game-session/escape_watch_checks.py"
 
 dotnet build "$root/tests/font-bootstrap/FontBootstrapChecks.csproj" -c Release --nologo
 python3 "$root/tests/font-bootstrap/run.py" "$root/tests/font-bootstrap/bin/Release/net10.0/NativeBridgeChecks.dll"
+
+# Companion fork identity, update isolation, observation and appearance regressions.
+dotnet run --project "$root/tests/companion/CompanionIdentityChecks.csproj" -c Release
+dotnet run --project "$root/tests/appearance/AppearanceChecks.csproj" -c Release
+python3 "$root/tests/companion-profile/run.py"

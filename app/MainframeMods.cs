@@ -171,11 +171,13 @@ namespace CapriDesktop
             {
                 Mod mod = modFirst + i < mods.Count ? mods[modFirst + i] : null;
                 modNames[i].Visible = modAbouts[i].Visible = modSwitches[i].Visible = modRemoves[i].Visible = modPublishes[i].Visible = mod != null;
-                bool options = mod != null && mod.Code && mod.On && capri.HasModOptions(mod.File.Id);
+                bool restore = mod != null && mod.Skin && capri.ModList.CanRestoreSkin(mod);
+                bool options = restore || (mod != null && mod.Code && mod.On && capri.HasModOptions(mod.File.Id));
                 modOptions[i].Visible = options;
                 modAbouts[i].Width = Scaled(options ? 180 : 256);
                 if (mod == null) continue;
-                modOptions[i].AccessibleName = "Open " + mod.File.Name + "'s options";
+                modOptions[i].Text = restore ? "Revert" : "Options";
+                modOptions[i].AccessibleName = restore ? "Revert " + mod.File.Name + " to its previous saved appearance" : "Open " + mod.File.Name + "'s options";
                 modNames[i].Text = mod.File.Name + (string.IsNullOrEmpty(mod.File.Version) ? "" : " v" + mod.File.Version);
                 modNames[i].ForeColor = mod.On ? White : Faint;
                 modAbouts[i].Text = ((mod.Changed ? "CHANGED, approve it again. " : mod.Code ? "RUNS CODE. " : mod.Skin ? (mod.On && capri.ModList.SkinStack.Count > 1 ? "SKIN, LAYER " + (capri.ModList.SkinStack.IndexOf(mod) + 1) + " OF " + capri.ModList.SkinStack.Count + ". " : "SKIN. ") : mod.Skill ? "SKILL. " : "") + (string.IsNullOrEmpty(mod.File.Author) ? "" : "by " + mod.File.Author + ". ") + (mod.File.Description ?? "") + (mod.Code || mod.File.WakeNames.Length == 0 ? "" : " Names: " + string.Join(", ", mod.File.WakeNames)) + (mod.Skill ? " For " + mod.File.Games[0] + "." : "")).Trim();
@@ -370,6 +372,19 @@ namespace CapriDesktop
         {
             Mod mod = ShownMod(row);
             if (mod == null) return;
+            if (mod.Skin)
+            {
+                try
+                {
+                    Mod restored = capri.ModList.RestoreSkin(mod);
+                    FillMods();
+                    ModSays(restored.File.Name + " reverted to its previous saved appearance.", false);
+                }
+                catch (ModException error) { ModSays(error.Message, true); }
+                catch (IOException error) { ModSays("Couldn't restore that appearance: " + error.Message, true); }
+                catch (UnauthorizedAccessException error) { ModSays("Couldn't restore that appearance: " + error.Message, true); }
+                return;
+            }
             Control made;
             string title;
             string problem = capri.MakeModOptions(mod.File.Id, out made, out title);

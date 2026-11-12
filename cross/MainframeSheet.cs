@@ -44,7 +44,7 @@ namespace CapriDesktop
         private readonly NeonButton[] downloads = new NeonButton[Cards];
         private readonly NeonPicker[] ratings = new NeonPicker[Cards];
         private readonly NeonCaption[] names = new NeonCaption[Rows], abouts = new NeonCaption[Rows];
-        private readonly NeonButton[] switches = new NeonButton[Rows], removes = new NeonButton[Rows];
+        private readonly NeonButton[] switches = new NeonButton[Rows], removes = new NeonButton[Rows], reverts = new NeonButton[Rows];
         private readonly NeonEntry[] colours = new NeonEntry[ArtColors.Slots];
         private readonly Dictionary<string, Bitmap> pictures = new Dictionary<string, Bitmap>();
         private readonly HashSet<string> fetching = new HashSet<string>();
@@ -129,6 +129,7 @@ namespace CapriDesktop
                 switches[i] = Button("On", 604, y, 56, 22, delegate { SwitchMod(row); });
                 removes[i] = Button("Remove", 668, y, 68, 22, delegate { RemoveMod(row); });
                 abouts[i] = Label("", 408, y + 28, 328, 32);
+                reverts[i] = Button("Revert", 668, y + 28, 68, 22, delegate { RevertSkin(row); });
             }
             installedBack = Button("Back", 408, 434, 60, 24, delegate { installedFirst -= Rows; Sync(); });
             installedPage = Label("", 476, 434, 192, 24); installedPage.Align = TextAlignment.Center;
@@ -306,6 +307,10 @@ namespace CapriDesktop
             {
                 Mod mod = installedFirst + i < all.Count ? all[installedFirst + i] : null;
                 names[i].IsVisible = abouts[i].IsVisible = switches[i].IsVisible = removes[i].IsVisible = mod != null;
+                bool restore = mod != null && mod.Skin && pet.ModList.CanRestoreSkin(mod);
+                reverts[i].IsVisible = restore;
+                reverts[i].IsEnabled = !working;
+                abouts[i].Width = restore ? 252 : 328;
                 if (mod == null) continue;
                 names[i].Text = mod.File.Name;
                 abouts[i].Text = (mod.File.Author == null ? "" : "by " + mod.File.Author + "  ") + (mod.File.Description ?? (mod.Skin ? (mod.File.Accessory ? "Accessory" : "Skin") : mod.Skill ? "Skill" : "Settings"));
@@ -384,6 +389,23 @@ namespace CapriDesktop
             }
             catch (Exception error) { Say(error.Message); }
             Sync();
+        }
+
+        internal bool RevertSkin(int row)
+        {
+            try
+            {
+                if (working) return false;
+                Mod mod = pet.ModList.All[installedFirst + row];
+                Mod restored = pet.ModList.RestoreSkin(mod);
+                Say(restored.File.Name + " reverted to its previous saved appearance.");
+                Sync(); return true;
+            }
+            catch (Exception error)
+            {
+                if (!(error is ModException || error is IOException || error is UnauthorizedAccessException)) throw;
+                Say(error.Message); Sync(); return false;
+            }
         }
 
         internal void RemoveMod(int row)

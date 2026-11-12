@@ -242,7 +242,7 @@ namespace CapriDesktop
         private static readonly string[] Keep = { "hook_event_name", "session_id", "cwd", "session_title", "permission_mode", "tool_name", "tool_input", "tool_use_id", "duration_ms", "error", "is_interrupt", "prompt", "message", "title", "notification_type", "last_assistant_message", "agent_id", "agent_type", "source", "reason", "trigger" };
         private static readonly object Missing = new object();
 #if CROSS
-        internal static string Data { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri"); } }
+        internal static string Data { get { return CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)); } }
 #else
         internal static string Data { get { return Packaged.Home(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)); } }
 #endif

@@ -62,7 +62,7 @@ namespace CapriDesktop
                 lastCrashAt = Environment.TickCount;
                 try
                 {
-                    if (Brain.LogPath == null) Brain.LogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri", "errors.txt");
+                    if (Brain.LogPath == null) Brain.LogPath = Path.Combine(CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)), "errors.txt");
                     Directory.CreateDirectory(Path.GetDirectoryName(Brain.LogPath));
                 }
                 catch (IOException) { }

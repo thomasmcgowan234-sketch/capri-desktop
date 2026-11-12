@@ -31,6 +31,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../app/Brain.cs" Link="Shared/Brain.cs" />
+    <Compile Include="../app/CompanionIdentity.cs" Link="Shared/CompanionIdentity.cs" />
+    <Compile Include="../app/CompanionObservation.cs" Link="Shared/CompanionObservation.cs" />
+    <Compile Include="../app/CompanionProfile.cs" Link="Shared/CompanionProfile.cs" />
     <Compile Include="../app/Care.cs" Link="Shared/Care.cs" />
     <Compile Include="../app/Engine.cs" Link="Shared/Engine.cs" />
     <Compile Include="../app/FileFinder.cs" Link="Shared/FileFinder.cs" />

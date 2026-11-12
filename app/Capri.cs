@@ -46,9 +46,9 @@ namespace CapriDesktop
             if (args.Length == 1 && args[0] == "--stream") Computer.Streaming = Computer.StreamingAlways = true;
             string identity = WindowsIdentity.GetCurrent().User.Value;
             bool first;
-            using (Mutex mutex = new Mutex(true, "Local\\Capri.Desktop." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : ""), out first))
-            using (EventWaitHandle restore = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\Capri.Restore." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : "")))
-            using (EventWaitHandle shown = new EventWaitHandle(false, EventResetMode.ManualReset, "Local\\Capri.Shown." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : "")))
+            using (Mutex mutex = new Mutex(true, "Local\\CapriCompanion.Desktop." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : ""), out first))
+            using (EventWaitHandle restore = new EventWaitHandle(false, EventResetMode.AutoReset, "Local\\CapriCompanion.Restore." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : "")))
+            using (EventWaitHandle shown = new EventWaitHandle(false, EventResetMode.ManualReset, "Local\\CapriCompanion.Shown." + identity + (smoke ? ".Test.Worker" : bench ? ".Bench" : "")))
             {
                 if (!first)
                 {
@@ -1232,6 +1232,7 @@ namespace CapriDesktop
 
         internal UpdateFile Download(Release release)
         {
+            if (!local) throw new BrainException(CompanionProfile.UpdateMessage);
             Version version;
             if (release == null || release.Draft || release.Prerelease || !Companion.ReleaseVersion(release.Tag, out version)) throw new BrainException("This release can't be installed.");
             ReleaseAsset asset = Installer(release);
@@ -1361,6 +1362,7 @@ namespace CapriDesktop
 
         internal void Install(UpdateFile update, int parent, long started)
         {
+            if (!local) throw new BrainException(CompanionProfile.UpdateMessage);
             if (update == null || !string.Equals(Path.GetDirectoryName(Path.GetFullPath(update.Path)), folder, StringComparison.OrdinalIgnoreCase) || !update.Path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || parent <= 0 || started <= 0) throw new BrainException("The update isn't ready to install.");
             using (FileStream file = new FileStream(update.Path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
@@ -2413,6 +2415,12 @@ namespace CapriDesktop
             Brain.MemoryPath = Path.Combine(data, "me.md");
             // personality.md is made only when they press Edit, so an old one from 0.7.4 or 0.7.5 is read as it is.
             Brain.PersonalityPath = Path.Combine(data, Brain.PersonalityName);
+            if (!smoke)
+            {
+                Brain.Identity = new CompanionIdentity(Path.Combine(data, "companion"));
+                CompanionObservation.Configure();
+                Brain.BackgroundPaused = delegate { return BackgroundPaused; };
+            }
             if (smoke) foreach (string old in new[] { Brain.PersonalityPath, Brain.PersonalityBackup }) if (File.Exists(old)) File.Delete(old);
             reminders = new Reminders(data, DateTime.Now);
             Brain.MemoriesPath = Path.Combine(data, "memories.md");
@@ -2443,7 +2451,7 @@ namespace CapriDesktop
             care = new Care(delegate { return clock.Elapsed.TotalSeconds; }, delegate { return DateTime.Now; }, careLines.Pick);
             // SECURITY: their toggles, with "Hey Capri" kept in its own setting for her wake word.
             Migrate(preferences);
-            Security.Load(preferences.Permissions);
+            Security.Load(!smoke && preferences.Permissions == null ? Security.Of(Security.Guarded) : preferences.Permissions);
             Security.HeyOn = delegate { return preferences.HeyCapri; };
             Security.SetHey = SetHeyCapri;
             Security.Changed = SecurityChanged;
@@ -2512,6 +2520,8 @@ namespace CapriDesktop
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("Open Capri Mainframe", null, delegate { mainframe.Restore(); }));
             menu.Items.Add(new ToolStripMenuItem("File editor", null, delegate { OpenFiles(0); }));
+            menu.Items.Add(new ToolStripMenuItem("Companion identity and privacy help", null, delegate { Hear("/companion help"); }));
+            menu.Items.Add(new ToolStripMenuItem("Stop screen observation", null, delegate { Hear("/observe stop"); }));
             ToolStripMenuItem playItem = new ToolStripMenuItem("Play");
             menu.Items.Add(playItem);
             visibilityItem = new ToolStripMenuItem("Hide Capri", null, delegate { ToggleHidden(); });
@@ -2801,7 +2811,7 @@ namespace CapriDesktop
                 if (background) CheckSlow(clock.Elapsed.TotalSeconds);
                 CheckVoiceInMic(signalNow);
                 UpdatePill(clock.Elapsed.TotalSeconds);
-                if (!testing && background && UpdateDue(preferences.UpdateCheckedAt, DateTime.UtcNow.Ticks, clock.Elapsed.TotalSeconds, updateStarted)) CheckForUpdates(false);
+                // Companion fork updates are manual; no background update downloads.
             };
             signals.Start();
             Size = CanvasSize(preferences.Size);
@@ -3216,6 +3226,14 @@ namespace CapriDesktop
 
         private void CheckForUpdates(bool asked)
         {
+            if (!testing)
+            {
+                updateStarted = true;
+                updateInstallAsked = false;
+                ForgetUpdate();
+                if (asked) mainframe.UpdateNote(CompanionProfile.UpdateMessage, false);
+                return;
+            }
             if (updating || installing) return;
             updateStarted = true;
             string package = updater.Package();
@@ -3257,14 +3275,7 @@ namespace CapriDesktop
 
         internal static Release FetchLatestRelease()
         {
-            ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("https://api.github.com/repos/lachydotmcg/capri-desktop/releases/latest");
-            request.UserAgent = "Capri-Desktop";
-            request.Accept = "application/vnd.github+json";
-            request.Timeout = 10000;
-            request.ReadWriteTimeout = 10000;
-            using (WebResponse response = request.GetResponse())
-            using (Stream body = response.GetResponseStream()) return ParseRelease(body);
+            throw new BrainException(CompanionProfile.UpdateMessage);
         }
 
         internal static Release ParseRelease(Stream body) { return (Release)new DataContractJsonSerializer(typeof(Release)).ReadObject(body); }
@@ -3347,6 +3358,13 @@ namespace CapriDesktop
 
         private void InstallUpdate()
         {
+            if (!testing)
+            {
+                updateInstallAsked = false;
+                ForgetUpdate();
+                mainframe.UpdateNote(CompanionProfile.UpdateMessage, false);
+                return;
+            }
             string package = updater.Package();
             if (package != null)
             {
@@ -4194,6 +4212,7 @@ namespace CapriDesktop
         // on the 31st"), she says its line once that day, the first time she's free while they're at the PC.
         private void CheckHoliday(DateTime now, long quiet)
         {
+            if (BackgroundPaused) return;
             string[] holiday = Brain.Holiday(now);
             if (holiday == null || now.Date == holidaySaid || !greetTried) return;
             if (quiet > 60000 || Hushed || hidden || quitting || dragging || pressed || InChat || typer.Visible || menu.Visible || speech != null || talkState != TalkState.Off || outro != null || onPanel || popOut >= 0 || working != null || FullScreen()) return;
@@ -4222,7 +4241,7 @@ namespace CapriDesktop
 
         private bool NewsBusy(long quiet)
         {
-            return quiet < 0 || quiet > 60000 || Hushed || hidden || quitting || dragging || pressed || InChat || typer.Visible || menu.Visible || outro != null || onPanel || popOut >= 0 || job != null || working != null || FullScreen();
+            return BackgroundPaused || quiet < 0 || quiet > 60000 || Hushed || hidden || quitting || dragging || pressed || InChat || typer.Visible || menu.Visible || outro != null || onPanel || popOut >= 0 || job != null || working != null || FullScreen();
         }
 
         private void CheckNews(long quiet)
@@ -4571,7 +4590,7 @@ namespace CapriDesktop
             // Her own hello in her bubble isn't them stopping her, and she goes once it's done.
             if (popOut >= 0 && (clicks != popClicks || InChat || typer.Visible || (talkState != TalkState.Off && remarkTicket != asking))) EndPopIn(false);
             if (popOut >= 0 && now >= popOut && speech == null && talkState == TalkState.Off) EndPopIn(true);
-            if (!preferences.CheckIns || Hushed) { nextPopIn = -1; return; }
+            if (BackgroundPaused || !preferences.CheckIns || Hushed) { nextPopIn = -1; return; }
             if (nextPopIn < 0) nextPopIn = now + PopGap();
             if (now < nextPopIn) return;
             nextPopIn = now + PopGap();
@@ -4581,7 +4600,7 @@ namespace CapriDesktop
 
         private bool PopFree(double now, long quiet)
         {
-            return quiet <= 60000 && !Hushed && !quitting && !dragging && !pressed && !InChat && !typer.Visible && !menu.Visible && speech == null
+            return !BackgroundPaused && quiet <= 60000 && !Hushed && !quitting && !dragging && !pressed && !InChat && !typer.Visible && !menu.Visible && speech == null
                 && talkState == TalkState.Off && outro == null && !onPanel && popOut < 0 && !docked && working == null && job == null
                 && !pushing && !transcribing && !speaker.Busy && now >= voiceUntil && !FullScreen();
         }
@@ -4603,6 +4622,7 @@ namespace CapriDesktop
 
         private void CheckCare(double now, long quiet)
         {
+            if (BackgroundPaused) return;
             if (preferences.CheckIns && preferences.CareGame && quiet <= Care.Away && now >= careGameAt)
             {
                 careGameAt = now + 15;
@@ -4771,7 +4791,7 @@ namespace CapriDesktop
         // With Check in on me on, ignored for a while when they're at the PC, she comes over and asks for attention: a click gets a happy line, silence gets a sulk and a longer wait.
         private void CheckNudge(double now, long quiet)
         {
-            if (!preferences.CheckIns || quiet > Care.Away) { noticed = -1; nudgeOut = -1; nudgeGap = NudgeGap; boredAsk = false; return; }
+            if (BackgroundPaused || !preferences.CheckIns || quiet > Care.Away) { noticed = -1; nudgeOut = -1; nudgeGap = NudgeGap; boredAsk = false; return; }
             if (boredAsk && !preferences.CareBored) { nudgeOut = -1; boredAsk = false; }
             // Her own bubble isn't them noticing her: their clicks, typing and menus are.
             bool attending = clicks != noticedClicks || dragging || pressed || InChat || typer.Visible || menu.Visible || (talkState != TalkState.Off && remarkTicket != asking) || onPanel;
@@ -5833,6 +5853,7 @@ namespace CapriDesktop
         private string UpdateTool(ToolArguments args)
         {
             if (InvokeRequired) return (string)Invoke(new Func<ToolArguments, string>(UpdateTool), args);
+            if (!testing) return CompanionProfile.UpdateMessage;
             string package = updater.Package();
             if (package != null)
             {
@@ -7449,6 +7470,10 @@ namespace CapriDesktop
         // Power saver is working now: Always, or In games while a game or anything full screen is in front.
         internal bool Saving { get { return preferences.PowerSaver == 2 || preferences.PowerSaver == 1 && frontBusy; } }
 
+        // Always is the explicit low-resource mode. In games retains the existing optional game commentary behavior.
+        // Direct conversations, voice, requested jobs and reminders remain available; background inference pauses.
+        internal bool BackgroundPaused { get { return preferences.PowerSaver == 2; } }
+
         // Her quarter-second signals' ticks: while Power saver works, her background checks run on every 4th, once a second.
         internal const int SaverEvery = 4;
         private int signalTicks;
@@ -8804,7 +8829,7 @@ namespace CapriDesktop
 
         private void CheckExplore(double now)
         {
-            if (!preferences.ExploreAway) { StopExplore(); return; }
+            if (BackgroundPaused || !preferences.ExploreAway) { StopExplore(); return; }
             long humanQuiet = awayInput.Quiet();
             if (humanQuiet < (long)ExploreAfter * 1000) exploreTired = false;
             // Half an hour is plenty: her wheel counts as input, and past that their screen should get to turn off and their PC to sleep.
@@ -9133,7 +9158,7 @@ namespace CapriDesktop
         private void CheckGlance(double now, long quiet, bool awayLook = false)
         {
             if (exploring && !awayLook) return;
-            if ((!preferences.Watch && !exploring) || glancing || Hushed || watchAlong != null) return;
+            if (BackgroundPaused || (!preferences.Watch && !exploring) || glancing || Hushed || watchAlong != null) return;
             double wait = brain.ScreenWait;
             if (wait > 0) { nextGlance = Math.Max(nextGlance, now + wait); return; }
             if (nextGlance < 0) nextGlance = now + Math.Min(20, GlanceGap);
@@ -9197,7 +9222,7 @@ namespace CapriDesktop
             // stuck behind her glances (ticket 88, Void: 180 s timeouts with Watch every 10 s on a local Gemma).
             double took = double.IsNaN(glanceStart) ? 0 : clock.Elapsed.TotalSeconds - glanceStart;
             glanceStart = double.NaN;
-            if (watch != watchTicket || (awayWatch >= 0 ? !exploring || awayWatch != exploreTicket || !ExploreFree() || Native.GetForegroundWindow() != exploreWindow || awayInput.Quiet() < (long)ExploreAfter * 1000 : !preferences.Watch)) return;
+            if (BackgroundPaused || watch != watchTicket || (awayWatch >= 0 ? !exploring || awayWatch != exploreTicket || !ExploreFree() || Native.GetForegroundWindow() != exploreWindow || awayInput.Quiet() < (long)ExploreAfter * 1000 : !preferences.Watch)) return;
             // Only a look Watch still wants moves its timer, and a provider's wait only adds to it, like in CheckGlance.
             double finished = clock.Elapsed.TotalSeconds, wait = brain.ScreenWait;
             if (took >= SlowGlance) nextGlance = Math.Max(nextGlance, finished + took * 2);
@@ -9347,6 +9372,7 @@ namespace CapriDesktop
         // Her own screenshots look straight through the task panel. It leaves capture only for that moment, so their recordings show it.
         private Bitmap OwnGrab(Rectangle area)
         {
+            CompanionObservation.RequireCapture();
             bool showing = PanelUnseen(true);
             try
             {
@@ -14051,6 +14077,24 @@ namespace CapriDesktop
                 bool fromMod = modSendDepth > 0 || sent != text;
                 text = sent;
                 if (fromMod) Security.ModSaid(text); else Security.TheySaid();
+            }
+            if (prompt == "> you: " && !callInput && callHeard == null && !Security.FromMod(text))
+            {
+                string companion = Brain.CompanionCommand(text);
+                if (text.Equals("/performance on", StringComparison.OrdinalIgnoreCase) || text.Equals("/performance off", StringComparison.OrdinalIgnoreCase))
+                {
+                    SetPowerSaver(text.EndsWith(" on", StringComparison.OrdinalIgnoreCase) ? 2 : 0);
+                    companion = BackgroundPaused ? "Performance mode on: autonomous inference is paused; direct conversation remains available." : "Performance mode off.";
+                }
+                if (companion != null)
+                {
+                    brain.Cancel();
+                    if (text.Equals("/observe stop", StringComparison.OrdinalIgnoreCase)) StopJob("Screen observation revoked.");
+                    heard = shown;
+                    Answer(++asking, companion, TalkState.Talking);
+                    return;
+                }
+                Brain.IdentityEvidence(text);
             }
             Func<int, string> callReply = prompt == "> you: " && !Security.FromMod(text) ? FriendAnswer(text) : null;
             int callVersion = (callInput || prompt == "> you: ") && CallModeOn ? callSession.Generation : -1;
@@ -25514,7 +25558,7 @@ namespace CapriDesktop
             string closeRoot = Path.Combine(Path.GetTempPath(), "capri-close-" + Guid.NewGuid().ToString("N"));
             try
             {
-                string closeHere = Path.Combine(closeRoot, "Capri"), closeOther = Path.Combine(closeRoot, "Other");
+                string closeHere = Path.Combine(closeRoot, CompanionProfile.Name, "app"), closeOther = Path.Combine(closeRoot, "Other");
                 Directory.CreateDirectory(closeHere);
                 Directory.CreateDirectory(closeOther);
                 if (SetupFiles.Closable(closeHere) || SetupFiles.Closable(null) || SetupFiles.Closable(Environment.SystemDirectory)) throw new Exception("Setup's admin close took a folder with no install marker.");
@@ -25733,7 +25777,7 @@ namespace CapriDesktop
             const string desktopMic = "Windows is blocking the mic. Turn on Microphone access and Let desktop apps access your microphone in Settings > Privacy & security > Microphone.";
             if (Packaged.Is) throw new Exception("The smoke test runs outside a package, but Windows named one: " + Packaged.FullName);
             if (updating || installing || updateFile != null) throw new Exception("The package check found an update already under way.");
-            string folder = Path.Combine(output, "packaged-" + Guid.NewGuid().ToString("N")), local = Path.Combine(folder, "Local"), usual = Path.Combine(local, "Capri");
+            string folder = Path.Combine(output, "packaged-" + Guid.NewGuid().ToString("N")), local = Path.Combine(folder, "Local"), usual = CompanionProfile.WindowsData(local);
             string staged = Path.Combine(updater.Folder, "Capri-Setup-99.0.0-store.exe"), exe = Application.ExecutablePath;
             string runKeyWas = Startup.RunKey, approvedKeyWas = Startup.ApprovedKey, startupRoot = "Software\\Capri smoke " + Guid.NewGuid().ToString("N");
             Func<Release> latestWas = updater.Latest;
@@ -25773,8 +25817,8 @@ namespace CapriDesktop
                 Directory.Delete(usual, true);
                 string kept = Path.Combine(local, "Packages", family, "LocalCache", "Local", "Capri");
                 Directory.CreateDirectory(kept);
-                if (Packaged.Home(local) != kept) throw new Exception("A fresh Store copy didn't use the real path of her private folder: " + Packaged.Home(local));
-                checks.Add("PASS a Store copy keeps a website install's data folder and uses a fresh install's private folder by its real path");
+                if (Packaged.Home(local) != usual || Directory.Exists(usual)) throw new Exception("The companion fork reused or imported the original Store profile: " + Packaged.Home(local));
+                checks.Add("PASS companion data stays in its separate profile even when an upstream Store profile exists; no legacy data is imported");
 
                 string reading = Path.Combine(folder, "reader");
                 Directory.CreateDirectory(reading);
