@@ -33,6 +33,7 @@ namespace CapriDesktop
         private double coverAt = -1;
         private double hideAt = -1;
         private bool finished;
+        private bool checking;
         private Process shelf;
         private Process cover;
         private PixelRect shelfAsked;
@@ -98,6 +99,16 @@ namespace CapriDesktop
         }
 
         internal void Tick(double now)
+        {
+            // UI fixtures pump dispatcher jobs while awaiting real replies. A queued
+            // frame must not recursively restart the current smoke-test stage.
+            if (finished || checking) return;
+            checking = true;
+            try { TickCore(now); }
+            finally { checking = false; }
+        }
+
+        private void TickCore(double now)
         {
             if (finished) return;
             if (started < 0) started = now;
