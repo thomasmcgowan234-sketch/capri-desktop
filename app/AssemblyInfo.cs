@@ -8,5 +8,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("Copyright 2026 Lachy")]
 [assembly: AssemblyVersion("0.8.9")]
 [assembly: AssemblyFileVersion("0.8.9")]
-[assembly: AssemblyInformationalVersion("0.8.9-companion.0.1.0")]
+[assembly: AssemblyInformationalVersion("0.8.9-companion.0.1.1")]
 [assembly: ComVisible(false)]

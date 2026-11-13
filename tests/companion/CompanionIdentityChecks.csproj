@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../app/CompanionIdentity.cs" Link="CompanionIdentity.cs" />
+    <Compile Include="../../app/CompanionJournal.cs" Link="CompanionJournal.cs" />
     <Compile Include="../../app/CompanionPrivacy.cs" Link="CompanionPrivacy.cs" />
   </ItemGroup>
 </Project>

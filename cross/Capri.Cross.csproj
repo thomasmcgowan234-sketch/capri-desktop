@@ -9,7 +9,7 @@
     <DefineConstants>$(DefineConstants);CROSS</DefineConstants>
     <NoWarn>$(NoWarn);CS0649;CS0169;CS0414;CA1416;SYSLIB0014</NoWarn>
     <Version>0.8.9</Version>
-    <InformationalVersion>0.8.9-companion.0.1.0</InformationalVersion>
+    <InformationalVersion>0.8.9-companion.0.1.1</InformationalVersion>
     <Product>Capri</Product>
     <ApplicationIcon>../assets/chip.ico</ApplicationIcon>
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
@@ -33,6 +33,7 @@
   <ItemGroup>
     <Compile Include="../app/Brain.cs" Link="Shared/Brain.cs" />
     <Compile Include="../app/CompanionIdentity.cs" Link="Shared/CompanionIdentity.cs" />
+    <Compile Include="../app/CompanionJournal.cs" Link="Shared/CompanionJournal.cs" />
     <Compile Include="../app/CompanionPrivacy.cs" Link="Shared/CompanionPrivacy.cs" />
     <Compile Include="../app/CompanionDevelopment.cs" Link="Shared/CompanionDevelopment.cs" />
     <Compile Include="../app/CompanionDevelopmentHost.cs" Link="Shared/CompanionDevelopmentHost.cs" />

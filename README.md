@@ -1,8 +1,8 @@
 # Personal AI Companion
 
-A personal, noncommercial companion fork of [Capri Desktop](https://github.com/lachydotmcg/capri-desktop), release **companion 0.1.0**, based on Capri 0.8.9. It keeps Capri's Mainframe, desktop avatar, local-model support, speech, voice-call routing and computer tools while adding an initially unnamed character, persistent reviewed identity, bounded automatic personality proposals, artwork history and fork-safe data/update boundaries.
+A personal, noncommercial companion fork of [Capri Desktop](https://github.com/lachydotmcg/capri-desktop), release **companion 0.1.1**, based on Capri 0.8.9. It keeps Capri's Mainframe, desktop avatar, local-model support, speech, voice-call routing and computer tools while adding an initially unnamed character, persistent reviewed identity, bounded automatic personality proposals, artwork history and fork-safe data/update boundaries.
 
-This is a development build. Native Windows CI has passed for the privacy-repair checkpoint; later changes need their own recorded validation. Automated tests do not establish physical audio, Discord or Radeon acceptance. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for remaining work and [PROGRESS.md](PROGRESS.md) for the exact tested revision.
+This is a development build. The preceding automatic-development revision passed native Windows and Linux CI; each later revision needs its own recorded validation. Automated tests do not establish physical audio, Discord or Radeon acceptance. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for remaining work and [PROGRESS.md](PROGRESS.md) for the exact tested revision.
 
 ## Start on Windows
 
@@ -41,6 +41,8 @@ Commands work in the typing box without a model. Only direct user input can chan
 Automatic development starts enabled and collects at most eight distinct qualifying direct-owner turns while memory is on. After an eligible reply and a 20-second idle delay, quiet/resource/fullscreen/job/voice gates may permit one local reflection. Attempts have a persisted 30-minute cooldown and stop at three pending drafts. The request has no tools or images, a fixed 240-token budget and a 30-second timeout; it does not use cloud or signed-in providers, continuously poll, retrain the model or retry invalid output automatically.
 
 An automatic idea stays tentative and cites the captured owner statement that motivated it. That statement does not prove a companion preference or a claimed experience. Inspect `/identity`, then confirm, reject or correct the idea; only direct review establishes it. Automatic name proposals are limited to an unnamed companion. Turning memory off clears buffered turns, cancels work where supported and rejects stale results even after off-then-on. Inherited editable notes, transcripts and backups are separate stores; edit/erase them separately when needed. Some inherited wake phrases and gesture dialogue still use Capri terminology.
+
+Open **Mainframe → Settings → Her personality → Personality journal** to search and filter current identity records, inspect dates and every retained evidence entry, and confirm, reject or correct a selected record. The Windows and Cross journal stays local and text-only, hides its content while Remember our chats is off, and refuses stale review actions after a profile, revision or privacy change. It shows bounded retained evidence rather than a complete edit history.
 
 ## Appearance
 

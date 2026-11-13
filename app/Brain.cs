@@ -818,6 +818,41 @@ namespace CapriDesktop
         internal static CompanionIdentity Identity;
         internal static CompanionDevelopment Development;
         internal static CompanionRoutine Routine;
+        // Journal views stay on the owner's desktop and never enter chat/voice/provider paths.
+        internal static CompanionJournalSnapshot ReadIdentityJournal()
+        {
+            lock (writing)
+            {
+                if (!Keeping) return CompanionJournalSnapshot.Unavailable("Identity journal is hidden while Remember our chats is off.", memoryGeneration);
+                CompanionIdentity identity = Identity;
+                if (identity == null) return CompanionJournalSnapshot.Unavailable("Identity storage is unavailable.", memoryGeneration);
+                identity.Enabled = true;
+                return identity.ReadJournal(memoryGeneration);
+            }
+        }
+        internal static bool IdentityJournalChanged(CompanionJournalSnapshot snapshot)
+        {
+            lock (writing)
+            {
+                if (snapshot == null || snapshot.ConsentGeneration != memoryGeneration) return true;
+                if (!Keeping) return snapshot.Available;
+                CompanionIdentity identity = Identity;
+                if (identity == null) return snapshot.Owner != null;
+                return identity.JournalChanged(snapshot);
+            }
+        }
+        internal static string ReviewIdentityJournal(CompanionJournalSnapshot snapshot, string action, string id, string replacement)
+        {
+            lock (writing)
+            {
+                if (!Keeping) return "Identity storage is paused by your memory/privacy settings.";
+                CompanionIdentity identity = Identity;
+                if (snapshot == null || !snapshot.Available || snapshot.ConsentGeneration != memoryGeneration
+                    || snapshot.Owner == null || snapshot.Owner != identity)
+                    return "Identity or privacy settings changed. Refresh the journal before reviewing a record.";
+                return identity.ReviewJournal(snapshot.Revision, action, id, replacement);
+            }
+        }
         internal static Func<bool> BackgroundPaused = delegate { return Routine != null && Routine.Paused; };
         internal const string CompanionHelp = "Companion commands (work without a model): /identity, /identity name NAME, /identity remember FACT, /identity restore, /identity development status, /identity development on or off; /observe start (30 minutes, local inference), /observe start cloud (selected remote provider may receive screenshots), /observe stop. Also: /quiet hours 22:00-08:00, /quiet hours off, /performance on or /performance off. Use Mainframe for model, microphone, privacy, skins and exit controls.";
         internal static string CompanionCommand(string text)

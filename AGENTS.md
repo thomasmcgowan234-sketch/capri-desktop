@@ -18,6 +18,7 @@ The Windows application is compiled by `ci/build-windows.ps1` using the .NET Fra
 - Local inference is the default path; connecting a remote provider is an explicit user choice. Never silently upload conversation, identity, screenshots or audio. Keep credentials out of Git, tests, logs and documentation.
 - Store user data through the companion profile, outside program binaries. Never automatically import old Capri or Python companion data. Validate schema before use, back up before mutation/migration, and reject unknown future schemas without overwriting them.
 - Identity schema 2 upgrades valid schema 1 files with dated raw-byte and rolling backups. Preserve migration/recovery idempotence, external-edit detection and provenance when changing the schema or correction commands.
+- The personality journal is a local display/review surface, never chat, speech or provider context. Keep copied evidence immutable; hide/clear view and undo buffers on memory/profile changes. Review requires current consent generation, exact profile instance and identity revision; never refresh an old click into authority over a new record.
 - Appearance changes use externally supplied, validated `.capri-skin` assets. Keep artwork licences/attribution. Do not add an image generator or arbitrary executable asset formats.
 - Code mods execute with application/user privileges. Preserve digest approval and reapproval after changes; do not describe this as a sandbox.
 - Preserve the distinct meanings of Power saver and Gaming Mode. Unsolicited work must obey resource and attention gates. Avoid background inference loops.
@@ -27,7 +28,9 @@ The Windows application is compiled by `ci/build-windows.ps1` using the .NET Fra
 
 Use synthetic data in temporary profiles. Read [TESTING.md](TESTING.md) for commands and the Windows acceptance checklist. Run meaningful deterministic tests and existing regressions, repair genuine failures, and preserve evidence. Linux tests cannot verify Windows audio, native capture, installation, multiple monitors or Radeon performance. State unexecuted checks explicitly.
 
-For identity/development changes, run `tests/companion/CompanionIdentityChecks.csproj`, `tests/development/CompanionDevelopmentChecks.csproj` and `tests/companion-integration/CompanionIntegrationChecks.csproj` before full application validation. Keep the blocked-provider memory revocation tests and real loopback transport checks: a stale completion must neither save private state nor consume queued transcript lines. Compilation and synthetic checks do not establish target-PC model, audio or gaming acceptance.
+For identity/development/journal changes, run `tests/companion/CompanionIdentityChecks.csproj`, `tests/development/CompanionDevelopmentChecks.csproj` and `tests/companion-integration/CompanionIntegrationChecks.csproj` before full application validation. Keep the blocked-provider memory revocation tests and real loopback transport checks: a stale completion must neither save private state nor consume queued transcript lines. Compilation and synthetic checks do not establish target-PC model, audio or gaming acceptance.
+
+Native package evidence must include the build-emitted `native-validation.json` receipt binding source, executable and all completion reports. Do not reuse older reports for rebuilt binaries or treat a checksum receipt as a signature.
 
 CI runs on pull requests, main pushes and manual dispatch. Keep one PR run per development revision; duplicate push/PR full Windows runs are unnecessary. A branch without a PR can use manual dispatch.
 

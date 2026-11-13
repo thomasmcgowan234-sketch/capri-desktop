@@ -640,7 +640,7 @@ namespace CapriDesktop
             // Their personality.md (back in 0.8.0): the key says whose personality she's using, and its menu edits or resets it.
             personalityMenu = Dropdown();
             personalityKey = Make("Her personality", 72, 55, 106, 20, delegate { ShowPersonalityMenu(); });
-            personalityKey.AccessibleName = "Her personality: edit personality.md, or put her default back";
+            personalityKey.AccessibleName = "Her personality: inspect the personality journal, edit personality.md, or put her default back";
             // Her own font fits all three on this row. Windows' fallback font is wider, so there they end in dots rather than spill.
             personalityKey.Ellipsis = notesKey.Ellipsis = filesKey.Ellipsis = true;
             Named("Language", 0, 82);
@@ -4767,6 +4767,7 @@ namespace CapriDesktop
         private void ShowPersonalityMenu()
         {
             personalityMenu.Items.Clear();
+            personalityMenu.Items.Add(Choice("Personality journal", false, delegate { OpenIdentityJournal(); }));
             personalityMenu.Items.Add(Choice("Edit personality.md", false, delegate { capri.OpenPersonality(); }));
             ToolStripMenuItem reset = Choice("Reset to her default", false, delegate { capri.ResetPersonality(); });
             reset.Enabled = Brain.PersonalityPath != null && System.IO.File.Exists(Brain.PersonalityPath);

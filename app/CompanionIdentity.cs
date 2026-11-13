@@ -12,7 +12,7 @@ namespace CapriDesktop
 {
     // Model-independent, owner-reviewed identity. No model output is promoted to evidence.
     // Call HandleCommand only for direct owner text; screen/call speech must never reach it.
-    internal sealed class CompanionIdentity
+    internal sealed partial class CompanionIdentity
     {
         internal const int Schema = 2;
         internal const int MaximumRecords = 128;

@@ -38,6 +38,7 @@ static class Program
             string actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Brain.Persona))).ToLowerInvariant();
             Check(actual == expected, "Windows persona snapshot matches the actual shared production prompt");
             Check(Brain.Stamp(Brain.DefaultPersonality) == Brain.DefaultStamp && !Brain.Retired.Contains(Brain.DefaultStamp), "default personality migration stamp matches current production content");
+            JournalChecks.Run(Check);
             Brain.Identity = new CompanionIdentity(Path.Combine(directory, "identity"));
             Brain.PersonalityPath = Brain.MemoryPath = Brain.MemoriesPath = Brain.TranscriptPath = null;
             string proposed = Brain.CompanionCommand("/identity name Rowan");

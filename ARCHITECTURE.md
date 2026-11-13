@@ -10,6 +10,7 @@ This fork keeps Capri's desktop application and adds durable character state aro
 | Cross interface | `cross/Pet*.cs`, `cross/MainframeSheet.cs`, native surfaces | Avalonia presentation and platform adapters |
 | Inference | `app/Brain.cs`, `app/Engine.cs`, `app/PlanBrain.cs` | Ollama, bundled local engine and optional provider transports, request/context limits |
 | Character state | `app/CompanionIdentity.cs` | Versioned identity, tentative proposals, source evidence, review/correction and recovery |
+| Personality journal | `app/CompanionJournal.cs`, `app/MainframeJournal.cs`, `cross/CompanionJournalWindow.cs` | Detached, bounded record/evidence views and direct-owner review through the existing identity commands |
 | Automatic development | `app/CompanionDevelopment.cs`, `app/CompanionDevelopmentHost.cs` | Bounded owner-turn collection, local reflection scheduling and platform policy/lifecycle gates |
 | Attention policy | `app/CompanionRoutine.cs` | Versioned quiet hours, Cross low-resource setting, cheap time/resource gates |
 | Screen consent | `app/CompanionObservation.cs` | Ephemeral 30-minute leases, capture gates and local/remote image-transmission consent |
@@ -33,6 +34,12 @@ The model may return one bounded JSON proposal for a name, interest, opinion, ha
 `CompanionDevelopmentHost` reads UI policy on the UI thread. Owned inference runs on the thread pool, then returns through the UI dispatcher. Input/work tokens, privacy generation, source/model fingerprint, identity revision and current policy are checked before applying a result. `Brain.WithMemoryConsent` checks the privacy generation atomically with persistence. New input cancels old work; memory-off clears buffered text and invalidates results even across an off-to-on cycle; closing disposes the coordinator. This is bounded proposal development without retraining or autonomous establishment of identity.
 
 The inherited notes, transcript and summarization system remains separate from identity. Notes can be edited and corrected, and provider/model changes do not reset profile data. Summaries and recalled lines are attributed recorded statements, not verified events. Turning off Remember our chats prevents new recording/retrieval/folding and invalidates delayed or in-flight fold results without consuming the retained backlog. Explicit `me.md` notes and current chat remain separate. Full forensic provenance and append-only correction of every inherited transcript/summary is future work.
+
+## Personality journal
+
+The existing personality menu opens a native journal on Windows and Cross. Shared immutable display snapshots copy current records and retained evidence under the identity lock; plain-text search and category/state filters need no provider request or new persistence. Details show creation/update UTC, model suggestions, captured owner citations, direct reviews and corrections separately. This is a view of schema-2 records, not a second memory store or append-only history.
+
+Review buttons use the existing confirm/reject/correct commands. The Brain facade checks memory consent generation, exact active profile instance and snapshot revision before writing; external-edit detection still protects the file. Off/on cannot revive an old click. UI timers check a cheap change predicate and discard private view/search/correction state on privacy/profile changes; they stop on close. These windows never send journal records through chat, speech or inference.
 
 ## Artwork
 

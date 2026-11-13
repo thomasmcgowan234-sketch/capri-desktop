@@ -57,7 +57,7 @@ powershell -ExecutionPolicy Bypass -File .\ci\build-windows.ps1 -OutputDirectory
 
 This compiles WinForms with .NET Framework 4.8, runs runtime smoke and verifies installer payload consistency. The Cross/Avalonia binary is not the Windows WinForms build.
 
-Checkpoint `b3ad5c6` passed the full native Windows runtime with 1,417 PASS, 0 FAIL and 0 SKIP, plus 53 explicit limits. Silent install/uninstall and package checks passed separately. These results verify that checkpoint, not later automatic-development changes; record a fresh full run for the final revision. The [Windows test build guide](WINDOWS_TEST_BUILD.md) describes artifact verification and target-PC checks.
+Automatic-development checkpoint `dada185` passed native Windows runtime with 1,417 PASS, 53 explicit LIMIT records, zero failures and zero skips in [run 43324949376](https://github.com/thomasmcgowan234-sketch/capri-desktop/actions/runs/43324949376). Linux and installer jobs also succeeded; the overall workflow conclusion was failure with macOS cancelled. Later revisions need their own evidence. Native builds now emit a receipt binding the tested executable/source/reports; the packager rejects older or mismatched evidence. The [Windows test build guide](WINDOWS_TEST_BUILD.md) describes artifact verification and target-PC checks.
 
 ## Windows acceptance checklist
 
@@ -67,6 +67,7 @@ Use a fresh synthetic profile, then repeat preservation checks with a backed-up 
 | --- | --- |
 | Launch/isolation | Mainframe/tray/chat work; original Capri/Python companion data unchanged; no upstream executable downloads |
 | Identity | Fresh identity unnamed; propose/review name/preference, restart and retain; assistant repetition cannot establish either |
+| Personality journal | Mainframe → Settings → Her personality → Personality journal; search/filter records and retained evidence; inspect source/UTC, confirm/correct/reject; memory-off clears the view, off/on and profile/revision changes reject old review clicks |
 | Automatic development | Eight distinct qualifying owner turns, eligible reply and idle period may produce one local tentative draft; inspect its actual source citation, confirm/reject/correct, restart and retain; remote/call/mod/screen inputs cannot supply evidence |
 | Development gates | `/identity development off`, memory off, quiet hours, performance/fullscreen/job/voice activity prevent work; off-then-on/new input/model changes discard stale results; cooldown and three-draft cap hold |
 | Corrections | Correct/reject synthetic memories; obsolete record does not reappear as current certainty after restart |

@@ -1,6 +1,6 @@
 # Releases, backups and recovery
 
-Companion release 0.1.0 is a separately maintained Capri fork. Its binary informational version is `0.8.9-companion.0.1.0`; the assembly compatibility version retains Capri 0.8.9. Do not install an official Capri executable over it. Production upstream update check/download/install paths are blocked; Check updates points to the manual companion process. This release does not implement a signed automatic fork updater.
+Companion release 0.1.1 is a separately maintained Capri fork. Its binary informational version is `0.8.9-companion.0.1.1`; the assembly compatibility version retains Capri 0.8.9. Do not install an official Capri executable over it. Production upstream update check/download/install paths are blocked; Check updates points to the manual companion process. This release does not implement a signed automatic fork updater.
 
 ## Data and application directories
 
@@ -33,7 +33,7 @@ dotnet build ci/Companion.Windows.csproj -c Release
 
 Output is `ci/bin/Release/net48/Capri.exe`. Copy it as `Capri-Setup.exe` for the inherited filename-selected installer, retaining the configuration and required notices. The original native PowerShell build also carries those resources and remains the Windows acceptance route. No SDK runtime/reference-pack DLLs are shipped as substitute Windows components.
 
-The Windows executable/installer must be validated on Windows. The privacy-repair checkpoint has passed native hosted CI; each later build needs its own evidence. A Linux build cannot establish Windows acceptance. [WINDOWS_TEST_BUILD.md](WINDOWS_TEST_BUILD.md) explains testing the packaged Windows artifact on your PC.
+The Windows executable/installer must be validated on Windows. The automatic-development checkpoint `dada185` passed native hosted Windows CI; each later build needs its own evidence. A Linux build cannot establish Windows acceptance. [WINDOWS_TEST_BUILD.md](WINDOWS_TEST_BUILD.md) explains testing the packaged Windows artifact on your PC.
 
 ## Update
 
@@ -58,7 +58,7 @@ The Windows installer preserves the displaced executable as `app/Capri.exe.previ
 
 In this fork, fetch the original as a source remote, inspect selected commits, and cherry-pick/merge on an integration branch. Resolve conflicts around identity/context, screen gates, skin transactions, profile paths, updater guards and build lists deliberately. Run regressions and Windows acceptance before tagging. Do not re-enable upstream executable updates.
 
-Use companion tags such as `companion-v0.1.0`, record source commit/toolchain, and ship `LICENSE.md`, `THIRD-PARTY-NOTICES.md` and dependency notices. Capri's PolyForm Noncommercial licence/Required Notices still apply, including the anonymous artist and other asset credits.
+Use companion tags such as `companion-v0.1.1`, record source commit/toolchain, and ship `LICENSE.md`, `THIRD-PARTY-NOTICES.md` and dependency notices. Capri's PolyForm Noncommercial licence/Required Notices still apply, including the anonymous artist and other asset credits.
 
 ## Offline full-profile backup tool
 
@@ -80,6 +80,6 @@ With clean committed source and completed builds, run:
 python3 ci/package-companion.py --windows ci/bin/Release/net48/Capri.exe --linux /absolute/linux-publish-directory --output /absolute/new-release-directory
 ```
 
-The optional Linux argument can be omitted. To include native runtime evidence, also pass `--windows-smoke /absolute/path/to/smoke/runtime/smoke-test.txt` from the complete successful native run, retaining its sibling completion markers. The packager rejects failed/incomplete reports and records their totals and hashes alongside the executable hash. Without that argument it labels the Windows binary unvalidated.
+The optional Linux argument can be omitted. To include native runtime evidence, also pass `--windows-smoke /absolute/path/to/smoke/runtime/smoke-test.txt` from the complete successful native run, retaining its sibling completion markers and `native-validation.json` receipt emitted by `ci/build-windows.ps1`. The receipt binds the exact executable SHA-256, committed source, all four reports and any CI run URL; mismatched, stale or missing receipts cannot validate a package. A native smoke started with dirty source remains useful but produces no receipt. Earlier artifacts keep their original evidence; their reports cannot certify newer binaries. The packager rejects failed/incomplete reports and records their totals and hashes alongside the executable hash. Without that argument it labels the Windows binary unvalidated.
 
 The script packages the Windows app/installer, required notices and guides, committed source ZIP, optional Linux runtime, release provenance and SHA-256 sums. CI retains the original binary artifact and adds a complete `companion-test-build` artifact only after successful native checks. Packaging performs no release publication. Checksums are integrity evidence, not a code-signing certificate; CI smoke evidence and target-PC/hardware acceptance remain separate manifest fields.

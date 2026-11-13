@@ -37874,6 +37874,7 @@ namespace CapriDesktop
             Section(checks, "SmokeReminders", delegate { SmokeReminders(checks); });
             Section(checks, "SmokeSavedLists", delegate { SmokeSavedLists(checks, output); });
             Section(checks, "SmokeNoteEditor", delegate { SmokeNoteEditor(checks); });
+            Section(checks, "SmokeCompanionJournal", delegate { Mainframe.JournalChecks(checks); });
             Section(checks, "SmokeFileEditor", delegate { SmokeFileEditor(checks, output); });
             Section(checks, "SmokePopTimes", delegate { SmokePopTimes(checks); });
             Section(checks, "SmokeCalendarReminders", delegate { SmokeCalendarReminders(checks); });

@@ -23,7 +23,7 @@ internal static class Program
     {
         string root = Path.Combine(Path.GetTempPath(), "companion-identity-check-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        try { Run(root); DevelopmentChecks(root); Console.WriteLine("PASS " + passed + " companion identity checks"); return 0; }
+        try { Run(root); DevelopmentChecks(root); JournalChecks(root); Console.WriteLine("PASS " + passed + " companion identity checks"); return 0; }
         catch (Exception error) { Console.Error.WriteLine("FAIL " + error); return 1; }
         finally { Directory.Delete(root, true); }
     }
@@ -111,6 +111,54 @@ internal static class Program
         Check(limited.HandleCommand("/identity remember one item too many").Contains("full") && before == File.ReadAllText(Path.Combine(full, "identity.json")), "bounded storage refuses overflow without dropping established records");
         long blockedRevision;
         Check(!limited.CanDevelop && !limited.TryBeginDevelopment(DateTime.UtcNow, out blockedRevision) && File.ReadAllText(Path.Combine(full, "identity.json")) == before, "automatic development cannot displace a full identity store");
+    }
+
+    private static void JournalChecks(string root)
+    {
+        string directory = Path.Combine(root, "journal");
+        CompanionIdentity identity = new CompanionIdentity(directory);
+        CompanionJournalSnapshot empty = identity.ReadJournal(1);
+        Check(empty.Available && empty.Records.Count == 0 && !Directory.Exists(directory), "opening an empty journal neither invents records nor creates profile files");
+        string name = Id(identity.HandleCommand("/identity name Rowan"));
+        identity.HandleCommand("/identity confirm " + name);
+        string oldName = name;
+        name = Id(identity.HandleCommand("/identity name Wren"));
+        identity.HandleCommand("/identity confirm " + name);
+        string rejected = Id(identity.HandleCommand("/identity propose opinion: Prefer solo puzzles | We compared cooperative and solo modes"));
+        identity.HandleCommand("/identity reject " + rejected);
+        DateTime now = DateTime.UtcNow;
+        long revision;
+        string result;
+        identity.TryBeginDevelopment(now, out revision);
+        identity.TryAddDevelopment(revision, "interest", "Explore astronomy", "0123456789abcdef", "We compared synthetic observatory telescopes", now.AddSeconds(-1), out result);
+        string draft = Id(result);
+        CompanionJournalSnapshot snapshot = identity.ReadJournal(1);
+        CompanionJournalRecord automatic = snapshot.Find("", "tentative", "interest").Single();
+        Check(automatic.Id == draft && automatic.Evidence.Count == 2 && automatic.Detail.Contains("model-reflection") && automatic.Detail.Contains("owner-turn") && automatic.Detail.Contains("0123456789abcdef") && automatic.Detail.Contains("not a verified experience") && automatic.Detail.Contains("without confirming"), "journal preserves separate model proposal and captured owner citation with their uncertainty");
+        Check(automatic.Detail.Contains(automatic.CreatedUtc) && automatic.Detail.Contains(automatic.UpdatedUtc) && automatic.Detail.Contains("bounded retained evidence"), "journal dates records and describes its actual history limit");
+        Check(snapshot.Find("OBSERVATORY", "all", "interest").Single().Id == draft && snapshot.Find(draft.ToUpperInvariant(), "ALL", "ALL").Single().Id == draft, "journal search finds original citations and record IDs without case sensitivity");
+        Check(snapshot.Find("", "rejected", "opinion").Single().Id == rejected && snapshot.Find("", "superseded", "name").Single().Id == oldName && snapshot.Find("", "unknown", "all").Count == 0, "journal filters retain inactive history without treating it as current identity");
+        string before = File.ReadAllText(Path.Combine(directory, "identity.json"));
+        identity.ReadJournal(1).Find("telescope", "all", "all");
+        Check(before == File.ReadAllText(Path.Combine(directory, "identity.json")), "reading and filtering journal records never changes persistent identity");
+        Check(identity.ReviewJournal(snapshot.Revision, "confirm", draft, "").StartsWith("Established", StringComparison.Ordinal), "journal confirmation uses explicit owner review and preserves evidence");
+        Check(snapshot.Find(draft, "tentative", "all").Count == 1 && snapshot.Records.First(record => record.Id == draft).Evidence.Count == 2, "journal snapshots remain detached when identity and evidence change");
+        before = File.ReadAllText(Path.Combine(directory, "identity.json"));
+        Check(identity.ReviewJournal(snapshot.Revision, "reject", draft, "").Contains("changed") && before == File.ReadAllText(Path.Combine(directory, "identity.json")), "stale journal review cannot overwrite a newer decision");
+        snapshot = identity.ReadJournal(1);
+        Check(identity.ReviewJournal(snapshot.Revision, "correct", draft, "Explore orbital mechanics").StartsWith("Corrected", StringComparison.Ordinal) && new CompanionIdentity(directory).ReadJournal(1).Find("orbital mechanics", "established", "interest").Single().Evidence.Count == 4, "journal correction survives reload with proposal, citation and owner-review provenance");
+        snapshot = identity.ReadJournal(1);
+        before = File.ReadAllText(Path.Combine(directory, "identity.json"));
+        Check(identity.ReviewJournal(snapshot.Revision, "forget", draft, "").Contains("review action") && identity.ReviewJournal(snapshot.Revision, "confirm", draft + " /identity restore", "").Contains("review action") && before == File.ReadAllText(Path.Combine(directory, "identity.json")), "journal review cannot dispatch arbitrary commands or injected IDs");
+        identity.Enabled = false;
+        CompanionJournalSnapshot paused = identity.ReadJournal(1);
+        Check(!paused.Available && paused.Records.Count == 0 && paused.Find("", "all", "all").Count == 0 && identity.JournalChanged(snapshot), "privacy pause withholds all journal content and invalidates the visible snapshot");
+        Check(identity.ReviewJournal(snapshot.Revision, "reject", draft, "").Contains("paused") && before == File.ReadAllText(Path.Combine(directory, "identity.json")), "journal cannot mutate identity while memory is paused");
+        string future = Path.Combine(root, "journal-future");
+        Directory.CreateDirectory(future);
+        File.WriteAllText(Path.Combine(future, "identity.json"), "{\"SchemaVersion\":99}");
+        CompanionJournalSnapshot blocked = new CompanionIdentity(future).ReadJournal(1);
+        Check(!blocked.Available && blocked.Records.Count == 0 && blocked.Status.Contains("read-only"), "unreadable or future identity storage yields a recovery status without journal content");
     }
 
     private static string LegacyIdentity()
