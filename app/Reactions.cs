@@ -1024,7 +1024,7 @@ namespace CapriDesktop
         // not playing the game herself, since her own game lines cover that.
         private bool ReactionsWatch()
         {
-            if (preferences.NoReactions || quitting || PlayingGame) return false;
+            if (BackgroundPaused || preferences.NoReactions || quitting || PlayingGame) return false;
             if (Asleep || napAsked || napping || ownNap) return false;
             return !manualHidden || docked;
         }
@@ -1078,7 +1078,7 @@ namespace CapriDesktop
 
         private bool ReactionVoiceFree()
         {
-            if (Hushed || preferences.Silent || quitting || (hidden && !docked) || (chatting && !local)) return false;
+            if (BackgroundPaused || Hushed || preferences.Silent || quitting || (hidden && !docked) || (chatting && !local)) return false;
             if (pushing || transcribing || typer.Visible || Voicing || (speech != null && working == null)) return false;
             if (unchecked(Environment.TickCount - micTalked) < 1500) return false;
             return working != null || (talkState != TalkState.Thinking && talkState != TalkState.Talking);

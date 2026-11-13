@@ -17,8 +17,9 @@ namespace CapriSetup
 {
     internal static class Program
     {
-        internal static string InstallPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Capri"); } }
-        internal const string RegistryPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Capri.Desktop";
+        internal static string InstallPath { get { return CompanionProfile.WindowsInstall(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)); } }
+        internal static string DataPath { get { return CompanionProfile.WindowsData(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)); } }
+        internal const string RegistryPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Capri.Companion";
         internal static readonly string[] Packs = { "brain", "voice", "ears", "wake" };
 
         internal static bool Wanted(string file, string[] args)
@@ -65,26 +66,10 @@ namespace CapriSetup
 
         private static int Update(string[] args)
         {
-            try
-            {
-                int parent;
-                long started;
-                if (args.Length != 3 || !int.TryParse(args[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out parent) || parent <= 0 || !long.TryParse(args[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out started) || started <= 0) throw new IOException("The update command is invalid.");
-                Process process = null;
-                try { process = Process.GetProcessById(parent); } catch (ArgumentException) { }
-                if (process != null)
-                    using (process)
-                    {
-                        bool same = false;
-                        try { same = process.StartTime.ToUniversalTime().Ticks == started; } catch (InvalidOperationException) { }
-                        if (same && !process.WaitForExit(60000)) throw new IOException("Capri is still closing. Try the update again.");
-                    }
-                Install(false);
-                using (Process launched = Process.Start(new ProcessStartInfo(Path.Combine(InstallPath, "Capri.exe")) { UseShellExecute = true, WorkingDirectory = InstallPath }))
-                    if (launched == null) throw new IOException("Capri updated but couldn't restart. Open her from the Start menu.");
-                return 0;
-            }
-            catch (Exception error) { Notice.Tell(null, error.Message, "Capri couldn't update", true); return 1; }
+            // The inherited updater targets the original author's releases. Even
+            // a cached installer must not replace this fork automatically.
+            Notice.Tell(null, CompanionProfile.UpdateMessage, "Companion updates", false);
+            return 1;
         }
 
         internal static byte[] Payload() { return File.ReadAllBytes(Application.ExecutablePath); }
@@ -183,15 +168,17 @@ namespace CapriSetup
             try
             {
                 File.WriteAllBytes(temporary, Payload());
-                if (File.Exists(target)) File.Replace(temporary, target, null); else File.Move(temporary, target);
+                // Retain the last binary for a manual rollback. User data is in
+                // a sibling folder and is never replaced by the installer.
+                if (File.Exists(target)) File.Replace(temporary, target, target + ".previous"); else File.Move(temporary, target);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
             File.Copy(Application.ExecutablePath, Path.Combine(destination, "Uninstall.exe"), true);
-            string unsaved = Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs, Environment.SpecialFolderOption.Create), "Capri.lnk"), target);
-            string onDesktop = desktop ? Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolderOption.Create), "Capri.lnk"), target) : null;
+            string unsaved = Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs, Environment.SpecialFolderOption.Create), "AI Companion.lnk"), target);
+            string onDesktop = desktop ? Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolderOption.Create), "AI Companion.lnk"), target) : null;
             using (RegistryKey key = Registry.CurrentUser.CreateSubKey(RegistryPath))
             {
-                key.SetValue("DisplayName", "Capri");
+                key.SetValue("DisplayName", CompanionProfile.DisplayName);
                 key.SetValue("DisplayVersion", version);
                 key.SetValue("Publisher", "Capri fan project");
                 key.SetValue("InstallLocation", destination);
@@ -400,7 +387,7 @@ namespace CapriSetup
             try
             {
                 string destination = Path.GetFullPath(InstallPath);
-                string expected = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Capri"));
+                string expected = Path.GetFullPath(CompanionProfile.WindowsInstall(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)));
                 if (!string.Equals(destination, expected, StringComparison.OrdinalIgnoreCase) || !File.Exists(Path.Combine(destination, ".capri-install"))) throw new IOException("The Capri install marker could not be verified.");
                 if (CloseEverything(destination))
                 {
@@ -418,8 +405,8 @@ namespace CapriSetup
                         string folder = Path.Combine(destination, pack);
                         Patiently(delegate { if (Directory.Exists(folder)) Directory.Delete(folder, true); });
                     }
-                    DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Capri.lnk"), destination);
-                    DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Capri.lnk"), destination);
+                    DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "AI Companion.lnk"), destination);
+                    DeleteShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "AI Companion.lnk"), destination);
                     SetupFiles.Unmark(destination);
                 }
                 catch
@@ -430,7 +417,7 @@ namespace CapriSetup
                 }
                 Registry.CurrentUser.DeleteSubKeyTree(RegistryPath, false);
                 File.Delete(Path.Combine(destination, ".capri-install"));
-                if (!silent) Notice.Tell(null, "Capri has been removed.\n\nYour position and size settings were kept in " + destination + ".", "Capri", false);
+                if (!silent) Notice.Tell(null, "AI Companion has been removed.\n\nYour settings, identity, memories and appearances were kept in " + DataPath + ".", "AI Companion", false);
                 return 0;
             }
             catch (Exception error) { if (silent) Console.Error.WriteLine(error.Message); else Notice.Tell(null, error.Message, "Capri could not be removed", true); return 1; }
@@ -698,7 +685,7 @@ namespace CapriSetup
                 catch (Exception error) { Notice.Tell(this, "Capri is installed, but the package marker couldn't be cleared. Delete " + SetupFiles.Marker + " in " + Program.InstallPath + " to let her update herself. " + error.Message, "Capri", true); }
             }
             catch (Exception error) { status.Text = "Capri could not finish. Your files are still here."; primary.Enabled = true; Notice.Tell(this, error.Message, "Capri couldn't install", true); return; }
-            if (Environment.Is64BitOperatingSystem && !VoicePack.Complete(VoicePack.Folder(Program.InstallPath))) FetchVoice();
+            if (Environment.Is64BitOperatingSystem && !VoicePack.Complete(VoicePack.Folder(Program.DataPath))) FetchVoice();
             else Finish();
         }
 
@@ -725,7 +712,7 @@ namespace CapriSetup
                 string failed = null;
                 try
                 {
-                    Program.FetchVoice(Program.InstallPath, delegate(string what, long have, long size)
+                    Program.FetchVoice(Program.DataPath, delegate(string what, long have, long size)
                     {
                         string detail = what == "Downloading" ? Program.Megabytes(have) + " of " + Program.Megabytes(size) : what == "Checking" ? "Checking the download…" : "Unpacking…";
                         Post(delegate { Speaking(have, size, detail); });

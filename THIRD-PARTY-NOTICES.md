@@ -10,7 +10,26 @@ Her own ears run [NVIDIA Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/par
 
 ## QR codes
 
-Capri Remote's pairing QR code (app/RemoteQr.cs) is ported from Project Nayuki's [QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library), Copyright (c) Project Nayuki, under the [MIT License](https://opensource.org/licenses/MIT). The licence text is in the file's header.
+Capri Remote's pairing QR code (app/RemoteQr.cs) is ported from Project Nayuki's [QR Code generator library](https://www.nayuki.io/page/qr-code-generator-library), Copyright (c) Project Nayuki, under the [MIT License](https://opensource.org/licenses/MIT). The licence text is retained in the file's header and reproduced here for binary distributions:
+
+Copyright (c) Project Nayuki. (MIT License)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+The Software is provided "as is", without warranty of any kind, express or implied, including but not limited to the
+warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or
+copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or
+otherwise, arising from, out of or in connection with the Software or the use or other dealings in the Software.
+
+## Fonts
+
+Share Tech Mono and Barlow font licence texts accompany binary releases in `licenses/OFL-ShareTechMono.txt` and `licenses/Barlow-OFL.txt`. Their originals are retained under `assets/fonts/` in the source.
 
 ## Arch v0.8.6.1 native adaptations
 

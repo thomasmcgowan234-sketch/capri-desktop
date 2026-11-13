@@ -55,18 +55,11 @@ namespace CapriDesktop
             }
         }
 
-        // Her data folder, under LocalApplicationData. Windows keeps the new folders a package makes in AppData in a private place
-        // that only the package sees at the usual path, so File Explorer, Notepad and her brain's engine couldn't open what she
-        // made there. A Store copy uses that private place by its real name, which everyone can open and which goes when she's
-        // uninstalled. A folder the website's Capri made is real already, so she moves in and keeps everything in it.
+        // This fork owns a separate profile, outside its replaceable app folder.
+        // Do not silently move in with the upstream Capri or import its data.
         internal static string Home(string local)
         {
-            string usual = Path.Combine(local, "Capri");
-            string family = Family;
-            if (family == null) return usual;
-            Directory.CreateDirectory(usual);
-            string kept = Path.Combine(local, "Packages", family, "LocalCache", "Local", "Capri");
-            return Directory.Exists(kept) ? kept : usual;
+            return CompanionProfile.WindowsData(local);
         }
 
         // What to start her by. A package's folder changes with every update, so a Store copy goes by the execution alias in her

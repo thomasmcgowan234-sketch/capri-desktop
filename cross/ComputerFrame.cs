@@ -148,6 +148,7 @@ namespace CapriDesktop
 
         private ComputerFrame Capture(ComputerSnapshot source, bool crop, CancellationToken token, bool observation)
         {
+            CompanionObservation.RequireCapture();
             using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime);
             token = linked.Token;
             token.ThrowIfCancellationRequested();

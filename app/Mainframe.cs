@@ -640,7 +640,7 @@ namespace CapriDesktop
             // Their personality.md (back in 0.8.0): the key says whose personality she's using, and its menu edits or resets it.
             personalityMenu = Dropdown();
             personalityKey = Make("Her personality", 72, 55, 106, 20, delegate { ShowPersonalityMenu(); });
-            personalityKey.AccessibleName = "Her personality: edit personality.md, or put her default back";
+            personalityKey.AccessibleName = "Her personality: inspect the personality journal, edit personality.md, or put her default back";
             // Her own font fits all three on this row. Windows' fallback font is wider, so there they end in dots rather than spill.
             personalityKey.Ellipsis = notesKey.Ellipsis = filesKey.Ellipsis = true;
             Named("Language", 0, 82);
@@ -940,7 +940,7 @@ namespace CapriDesktop
             discord = Switch("Show on Discord", c, 708, delegate { if (!syncing) capri.ToggleDiscord(); });
             cursor = Switch("Use her cursor", c, 736, delegate { if (!syncing) capri.ToggleCursor(); });
             remembering = Switch("Remember our chats", c, 764, delegate { if (!syncing) capri.ToggleRemembering(); });
-            remembering.AccessibleName = "Remember our chats. She keeps daily transcripts and memories.md on this PC, never uploaded";
+            remembering.AccessibleName = "Remember our chats. Transcripts and memories are saved locally; relevant text may be sent to your selected AI provider. Off stops recording, retrieval and background summaries.";
             // SECURITY took Blackwall mode's place (Lachy, 29 Oct): its button opens her SECURITY window, and the line under it
             // says what the preset does. Blackwall mode is its Blackwall preset now.
             security = Make("Security: " + Security.PresetName, 28 + c, 795, 328, 22, delegate { OpenSecurity(); });
@@ -950,7 +950,7 @@ namespace CapriDesktop
             blackwallNote.TextAlign = ContentAlignment.MiddleRight;
             blackwallNote.Bounds = new Rectangle(28 + c, 819, 328, 18);
             // Power saver: Off, In games or Always (issue #111). Simple Settings keeps it; the rows from Perch down fold under it.
-            powerSaver = Setting("Power saver", SaverNames, c, 840, "Power saver: how lightly she runs in games, or always");
+            powerSaver = Setting("Power saver", SaverNames, c, 840, "Power saver: In games reduces rendering and polling. Always also pauses background inference and autonomous interactions. Direct chat remains available.");
             powerSaverName = new Readout(powerSaver);
             powerSaver.Changed += delegate { if (syncing) return; powerSaverName.Text = SaverNames[powerSaver.Value]; capri.SetPowerSaver(powerSaver.Value); };
             int afterSaver = Controls.Count;
@@ -4767,6 +4767,7 @@ namespace CapriDesktop
         private void ShowPersonalityMenu()
         {
             personalityMenu.Items.Clear();
+            personalityMenu.Items.Add(Choice("Personality journal", false, delegate { OpenIdentityJournal(); }));
             personalityMenu.Items.Add(Choice("Edit personality.md", false, delegate { capri.OpenPersonality(); }));
             ToolStripMenuItem reset = Choice("Reset to her default", false, delegate { capri.ResetPersonality(); });
             reset.Enabled = Brain.PersonalityPath != null && System.IO.File.Exists(Brain.PersonalityPath);

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Cross-compilation only. Launch, audio and installation acceptance require Windows. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework><OutputType>WinExe</OutputType>
+    <AssemblyName>Capri</AssemblyName><GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks><LangVersion>5</LangVersion><Optimize>true</Optimize>
+    <ApplicationManifest>../app/app.manifest</ApplicationManifest><ApplicationIcon>../assets/chip.ico</ApplicationIcon>
+    <NoWarn>$(NoWarn);MSB3277;CS0649;CS0169;CS0414</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../app/*.cs" />
+    <Reference Include="System;System.Core;System.Drawing;System.Windows.Forms;System.Web.Extensions;System.Runtime.Serialization;System.IO.Compression;System.IO.Compression.FileSystem;System.Security;UIAutomationClient;UIAutomationTypes;WindowsBase;System.Speech;System.Runtime;System.Runtime.WindowsRuntime;System.Runtime.InteropServices.WindowsRuntime" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" PrivateAssets="all" />
+    <EmbeddedResource Include="../assets/sprites/*.png" LogicalName="Capri.Sprite.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../assets/voice/*.wav" LogicalName="Capri.Voice.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../assets/chip.ico" LogicalName="Capri.Chip.ico" />
+    <EmbeddedResource Include="../assets/chip.png" LogicalName="Capri.Chip.png" />
+    <EmbeddedResource Include="../assets/cursor.png" LogicalName="Capri.Cursor.png" />
+    <EmbeddedResource Include="../assets/fonts/ShareTechMono-Regular.ttf" LogicalName="Capri.Font.Mono.ttf" />
+    <EmbeddedResource Include="../assets/fonts/CapriMainframe-Bold.ttf" LogicalName="Capri.Font.Title.ttf" />
+    <EmbeddedResource Include="../assets/vbcable/VBCABLE_Driver_Pack45.zip" LogicalName="Capri.VBCABLE.zip" />
+  </ItemGroup>
+</Project>

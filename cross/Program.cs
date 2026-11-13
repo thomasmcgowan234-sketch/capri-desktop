@@ -34,6 +34,7 @@ namespace CapriDesktop
                 return AppBuilder.Configure<ShelfApp>().UsePlatformDetect().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
             }
             if (args.Length >= 2 && args[0] == "--smoke") Smoke = Path.GetFullPath(args[1]);
+            if (Smoke != null) CompanionObservation.Command("/observe start cloud"); // Explicit consent for synthetic smoke fixtures only.
             using LinuxProfile profile = OperatingSystem.IsLinux() && Smoke == null ? new LinuxProfile() : null;
             // Whatever ends her leaves a line in errors.txt. A bad click or timer is caught once her app is up (CapriApp).
             if (Smoke == null) AppDomain.CurrentDomain.UnhandledException += delegate(object sender, UnhandledExceptionEventArgs crash) { Crashed(crash.ExceptionObject as Exception); };
@@ -62,7 +63,7 @@ namespace CapriDesktop
                 lastCrashAt = Environment.TickCount;
                 try
                 {
-                    if (Brain.LogPath == null) Brain.LogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri", "errors.txt");
+                    if (Brain.LogPath == null) Brain.LogPath = Path.Combine(CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)), "errors.txt");
                     Directory.CreateDirectory(Path.GetDirectoryName(Brain.LogPath));
                 }
                 catch (IOException) { }

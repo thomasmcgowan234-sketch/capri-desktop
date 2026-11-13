@@ -134,7 +134,9 @@ namespace CapriDesktop
         {
             if (string.IsNullOrEmpty(folder)) return false;
             folder = Path.GetFullPath(folder).TrimEnd('\\');
-            return string.Equals(Path.GetFileName(folder), "Capri", StringComparison.OrdinalIgnoreCase) && File.Exists(Path.Combine(folder, ".capri-install"));
+            return string.Equals(Path.GetFileName(folder), "app", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(Path.GetFileName(Path.GetDirectoryName(folder)), CompanionProfile.Name, StringComparison.OrdinalIgnoreCase)
+                && File.Exists(Path.Combine(folder, ".capri-install"));
         }
 
         internal static void Patiently(Action remove)
@@ -154,7 +156,7 @@ namespace CapriDesktop
     {
         internal static string RunKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
         internal static string ApprovedKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run";
-        internal const string Name = "Capri";
+        internal const string Name = CompanionProfile.Name;
 
         internal static bool On(string exe)
         {

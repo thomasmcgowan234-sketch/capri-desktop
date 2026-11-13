@@ -28,6 +28,8 @@ internal static class RequestedVisionChecks
 
     internal static void Run()
     {
+        CompanionObservation.Command("/observe start cloud"); // Explicit permission for synthetic provider/capture fixtures.
+
         int checks = 0;
         void Check(bool value, string name) { if (!value) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
         byte[] picture;

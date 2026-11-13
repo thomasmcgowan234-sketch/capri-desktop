@@ -11,7 +11,7 @@ namespace CapriDesktop
         internal LinuxProfile()
         {
             umask(0x3f);
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri");
+            string folder = CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             Directory.CreateDirectory(folder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             string path = Path.Combine(folder, "native-writer.lock");
             if (new FileInfo(path).LinkTarget != null) throw new IOException("The native profile lock cannot be a link.");

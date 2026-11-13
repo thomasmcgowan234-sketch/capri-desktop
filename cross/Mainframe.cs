@@ -311,8 +311,8 @@ namespace CapriDesktop
             personality.Check = false;
             // Match the released row's explicit fallback for narrower native text.
             personality.Ellipsis = true;
-            personality.Options(new[] { "Edit personality.md", "Reset to default" }); personality.Text = "Her personality";
-            personality.Changed += i => { if (i == 0) pet.OpenPersonality(); else pet.ResetPersonality(); personality.Text = "Her personality"; };
+            personality.Options(new[] { "Personality journal", "Edit personality.md", "Reset to default" }); personality.Text = "Her personality";
+            personality.Changed += i => { if (i == 0) OpenJournal(); else if (i == 1) pet.OpenPersonality(); else pet.ResetPersonality(); personality.Text = "Her personality"; };
             Key("Open her notes", 184, 55, 96, 20, () => pet.OpenNotes()).Ellipsis = true;
             Key("File editor", 286, 55, 70, 20, () => pet.OpenFiles(0)).Ellipsis = true;
             var language = Picker("Language", 184, 85, 172, () => LanguageIndex(), i => pet.SetLanguage(Brain.Languages[i, 1]));
@@ -736,6 +736,7 @@ namespace CapriDesktop
         internal void OpenLayers() { ShowSheet(new MainframeSheet(pet, "VOICE LAYERS", "layers")); }
         internal void OpenSecurity() { ShowSheet(new MainframeSheet(pet, "SECURITY", "security")); }
         internal void OpenVault() { ShowSheet(new MainframeSheet(pet, "MEMORY VAULT", "vault")); }
+        internal void OpenJournal() { ShowSheet(new CompanionJournalWindow(pet)); }
         internal void OpenMods()
         {
             if (Mods == null)

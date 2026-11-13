@@ -474,6 +474,7 @@ namespace CapriDesktop
 
         private static byte[] Capture(Display display, CancellationToken token)
         {
+            CompanionObservation.RequireCapture();
             if (!CGPreflightScreenCaptureAccess()) throw new InvalidOperationException(Eyes.MissingFor(true, null, null));
             string path = Path.Combine(Path.GetTempPath(), "capri-hands-" + Guid.NewGuid().ToString("N") + ".png");
             try

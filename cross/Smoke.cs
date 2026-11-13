@@ -19,7 +19,7 @@ using Avalonia.Platform;
 
 namespace CapriDesktop
 {
-    internal sealed class Smoke
+    internal sealed partial class Smoke
     {
         private readonly Pet pet;
         private readonly string folder;
@@ -33,6 +33,7 @@ namespace CapriDesktop
         private double coverAt = -1;
         private double hideAt = -1;
         private bool finished;
+        private bool checking;
         private Process shelf;
         private Process cover;
         private PixelRect shelfAsked;
@@ -98,6 +99,16 @@ namespace CapriDesktop
         }
 
         internal void Tick(double now)
+        {
+            // UI fixtures pump dispatcher jobs while awaiting real replies. A queued
+            // frame must not recursively restart the current smoke-test stage.
+            if (finished || checking) return;
+            checking = true;
+            try { TickCore(now); }
+            finally { checking = false; }
+        }
+
+        private void TickCore(double now)
         {
             if (finished) return;
             if (started < 0) started = now;
@@ -339,6 +350,8 @@ namespace CapriDesktop
                 checks.Add("PASS voice layers: Settings > Voice style > Layers turns on two copies of her under her, like Windows, with Layer 1 and Layer 2's pitch and delay in their own menus; " + layersFound + "; her ElevenLabs replies get them and come back 25 ms longer for their tails; off out of the box and in settings from before them, and off her voice is byte for byte as it was; the layers save and load as set");
                 LocalVoiceChecks();
                 BrainServerChecks();
+                AutomaticDevelopmentChecks();
+                JournalChecks();
                 ProviderRegression.Run(pet, folder);
                 checks.Add("PASS provider key regression: server and key are one atomic pair, concurrent chats stay on their own pair, loopback addresses with paths work, provider switches never reuse another provider's key, saved keys are 0600, plain HTTP is refused away from this PC, provider errors, streamed errors, UI errors and logs redact the key, redirects keep it, and the unkeyed server message is unchanged");
                 ChoresChecks();
@@ -967,8 +980,8 @@ namespace CapriDesktop
                 string logged = File.ReadAllText(today), queued = File.Exists(unfolded) ? File.ReadAllText(unfolded) : "";
                 bool glancesKept = !Brain.FoldsGlances && logged.Contains("She glanced at your screen: an anime wallpaper with a red-haired girl. She stayed quiet.") && logged.Contains("Capri:** Cute wallpaper, choom.")
                     && !queued.Contains("anime wallpaper") && !queued.Contains("Cute wallpaper") && queued.Contains("You: we finally beat the smoke boss") && queued.Contains("She looked at your screen: a code editor with a red error on line 12.");
-                bool toldMirror = Glances.Line.IndexOf("The small red-haired anime girl with a speech bubble is you, Capri, not part of their screen", StringComparison.Ordinal) > 0
-                    && Pet.LookAsk.IndexOf("The small red-haired anime girl with a speech bubble is Capri, the desktop companion, not part of their screen", StringComparison.Ordinal) > 0;
+                bool toldMirror = Glances.Line.IndexOf("The desktop companion avatar and its speech bubble are overlays, not part of the observed application", StringComparison.Ordinal) > 0
+                    && Pet.LookAsk.IndexOf("The desktop companion avatar and its speech bubble are overlays, not part of the observed application", StringComparison.Ordinal) > 0;
                 if (!glancesKept || !toldMirror) throw new Exception("Her own sprite in screenshots went wrong: kept " + glancesKept + ", told " + toldMirror + " | " + queued.Replace("\n", " | "));
                 checks.Add("PASS her own sprite: her glance and check-my-screen prompts say the red-haired anime girl with the speech bubble is her, not part of their screen, and her glances go in the transcript but never into memories.md, while a look they asked for still does");
                 bool personaFixed = Brain.Persona == Brain.DefaultPersonality + "\n" + Brain.Safety + "\n" + Brain.Machinery && Brain.Safety.IndexOf("findahelpline.com", StringComparison.Ordinal) >= 0 && Brain.DefaultPersonality.IndexOf("helpline", StringComparison.Ordinal) < 0 && Brain.Character.StartsWith(Brain.Persona, StringComparison.Ordinal);
@@ -4992,6 +5005,12 @@ namespace CapriDesktop
             pet.SetLocalVoice("model", "kokoro");
             pet.SetLocalVoice("voice", "tone");
             fail("a set local server speaks", pet.Speaks && pet.Speaker.Name == "Local server" && pet.VoiceStatus == "local " + url + " | tone | speaking" && pet.VoiceMenu == "Provider: Local server | - | *Speak replies | - | Server: " + url + "... | Model: kokoro... | Voice: tone... | Format: WAV | - | Test voice");
+            int privateBefore;
+            lock (speechAsked) privateBefore = speechAsked.Count;
+            pet.Hear("/companion help");
+            MainframeWait(() => pet.Talk.Reply != null && pet.Talk.Reply.Contains("/identity"), "private companion command display");
+            Thread.Sleep(100);
+            lock (speechAsked) fail("companion commands stay text-only", speechAsked.Count == privateBefore);
             Func<string, string> problem = delegate(string text)
             {
                 try { pet.Speaker.Speak(text); return null; }
@@ -5281,7 +5300,7 @@ namespace CapriDesktop
                 && last.IndexOf("image_url", StringComparison.Ordinal) > 0 && last.IndexOf("1280 x 720", StringComparison.Ordinal) > 0 && last.IndexOf("send hola qu", StringComparison.Ordinal) > 0
                 && last.IndexOf("4. fly", StringComparison.Ordinal) > 0 && last.IndexOf("\\\"model\\\"", StringComparison.Ordinal) < 0 && last.IndexOf("eyes-test", StringComparison.Ordinal) > 0);
             fail("a job that never ends stops at 25 steps", Chores.MostSteps == 25 && endless == "Ran out of steps before finishing. Last: wait at 0, 0" && done.Count == 25 && replied == 30);
-            fail("she never clicks herself", last.IndexOf("The small red-haired girl with a speech bubble is you, Capri: never click her.", StringComparison.Ordinal) > 0);
+            fail("she never clicks herself", last.IndexOf("The desktop companion avatar and its speech bubble are overlays: never click them.", StringComparison.Ordinal) > 0);
             // Her own pointer, like Windows': it glides on a human path to the target while their mouse stays put, and parks
             // when the job ends.
             List<double[]> path = Chores.Path(0.1, 0.9, 0.8, 0.2, 7);

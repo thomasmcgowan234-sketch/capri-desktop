@@ -21,7 +21,7 @@ namespace CapriDesktop
 
         private bool FollowUpAllowed()
         {
-            return preferences.FollowUps && !quitting && !Hushed && working == null && !MidJob(job) && agent == null
+            return preferences.FollowUps && !BackgroundPaused && !quitting && !Hushed && working == null && !MidJob(job) && agent == null
                 && (!chatting || local && earsReady) && !typer.Visible && !pushing && !transcribing;
         }
 

@@ -322,13 +322,13 @@ namespace CapriDesktop
         internal static string LoginFile()
         {
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            if (OnMac) return Path.Combine(home, "Library", "LaunchAgents", "com.lachydotmcg.capri.plist");
+            if (OnMac) return Path.Combine(home, "Library", "LaunchAgents", "com.capricompanion.desktop.plist");
             string config = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-            return Path.Combine(string.IsNullOrEmpty(config) ? Path.Combine(home, ".config") : config, "autostart", "capri.desktop");
+            return Path.Combine(string.IsNullOrEmpty(config) ? Path.Combine(home, ".config") : config, "autostart", "capri-companion.desktop");
         }
 
         // Her app's id on Mac, from cross/mac/Info.plist.
-        internal const string MacBundle = "io.github.lachydotmcg.capri";
+        internal const string MacBundle = "io.github.thomasmcgowan234-sketch.capri-companion";
 
         internal static string LoginEntry(string program, bool mac)
         {
@@ -342,11 +342,11 @@ namespace CapriDesktop
                 foreach (string arg in run) args.Append("\t\t<string>").Append(System.Security.SecurityElement.Escape(arg)).Append("</string>\n");
                 // Login Items names the entry after the program it runs, which is Apple's open; this names it after her app instead.
                 string owner = bundled ? "\t<key>AssociatedBundleIdentifiers</key>\n\t<array>\n\t\t<string>" + MacBundle + "</string>\n\t</array>\n" : "";
-                return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key>\n\t<string>com.lachydotmcg.capri</string>\n" + owner + "\t<key>ProgramArguments</key>\n\t<array>\n" + args + "\t</array>\n\t<key>RunAtLoad</key>\n\t<true/>\n\t<key>ProcessType</key>\n\t<string>Interactive</string>\n</dict>\n</plist>\n";
+                return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>Label</key>\n\t<string>com.capricompanion.desktop</string>\n" + owner + "\t<key>ProgramArguments</key>\n\t<array>\n" + args + "\t</array>\n\t<key>RunAtLoad</key>\n\t<true/>\n\t<key>ProcessType</key>\n\t<string>Interactive</string>\n</dict>\n</plist>\n";
             }
             // The Exec line quotes the path and escapes what the desktop entry spec reserves; a backslash takes four.
             string quoted = "\"" + program.Replace("\\", "\\\\\\\\").Replace("\"", "\\\"").Replace("`", "\\`").Replace("$", "\\$").Replace("%", "%%") + "\"";
-            return "[Desktop Entry]\nType=Application\nName=Capri\nComment=Capri, your desktop companion\nExec=" + quoted + "\nTerminal=false\nX-GNOME-Autostart-enabled=true\n";
+            return "[Desktop Entry]\nType=Application\nName=AI Companion\nComment=Personal desktop companion\nExec=" + quoted + "\nTerminal=false\nX-GNOME-Autostart-enabled=true\n";
         }
 
         internal static bool SetLogin(string file, string program, bool on, bool mac)

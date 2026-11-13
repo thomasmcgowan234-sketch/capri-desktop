@@ -70,7 +70,7 @@ namespace CapriDesktop
         private void SmokeFileEditor(List<string> checks, string output)
         {
             // Her real files stay out of this: every path below is in a folder made for it, inside her smoke test's own data folder.
-            string real = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Capri")) + Path.DirectorySeparatorChar;
+            string real = Path.GetFullPath(Packaged.Home(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData))) + Path.DirectorySeparatorChar;
             string folder = Path.Combine(Path.GetDirectoryName(settingsPath), "file-editor-" + Guid.NewGuid().ToString("N"));
             if (Path.GetFullPath(folder).StartsWith(real, StringComparison.OrdinalIgnoreCase)) throw new Exception("The file editor's smoke test would have run in her real data folder.");
             string notesWas = Brain.MemoryPath, personalityWas = Brain.PersonalityPath, safetyWas = Brain.Stamp(Brain.Safety);
@@ -100,7 +100,7 @@ namespace CapriDesktop
                 string opening = Played(panel, FileEditor.OpeningFrames, "opening", false, out rate);
                 for (int i = 1; i < panel.Drawn.Count; i++) if (panel.Drawn[i] <= panel.Drawn[i - 1]) throw new Exception("The opening didn't move forwards at " + panel.Drawn[i] + ".");
                 if (panel.Pacing) throw new Exception("The opening's frames kept coming at rest.");
-                if (panel.FileShown != "personality.md" || !panel.Draft.Contains("You are Capri") || !panel.PageWindow.Visible) throw new Exception("The file editor didn't open on personality.md: " + panel.FileShown);
+                if (panel.FileShown != "personality.md" || Brain.Readable(panel.Draft) != Brain.DefaultPersonality || !panel.PageWindow.Visible) throw new Exception("The file editor didn't open on personality.md: " + panel.FileShown);
                 if (panel.PageBox.Width < 640 * panel.UiScale || panel.BodyPixelsHigh < 400 * panel.UiScale) throw new Exception("The page is too small to edit in: " + panel.PageBox);
                 if (panel.BodyFontName != "Share Tech Mono" || Look.Face(FileEditor.TitleFace) == null || Look.Face(FileEditor.TitleFace).Name != "Capri Mainframe") throw new Exception("The file editor's fonts didn't load: " + panel.BodyFontName);
                 checks.Add("PASS file editor opens from her right-click menu on personality.md (first frame after " + clicked.ToString("F2") + " s, at rest after " + took.ToString("F1") + " s) and plays its opening forwards smoothly, " + opening + ", with a page of " + panel.PageBox.Width + " x " + panel.PageBox.Height + " and her own fonts");

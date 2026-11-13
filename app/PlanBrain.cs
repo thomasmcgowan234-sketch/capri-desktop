@@ -85,7 +85,7 @@ namespace CapriDesktop
                 string rules = Path.Combine(run, "system.txt");
                 File.WriteAllText(rules, system, new UTF8Encoding(false));
                 args.AddRange(new[] { "-p", "--verbose", "--input-format", "stream-json", "--output-format", "stream-json", "--tools", "", "--strict-mcp-config",
-                    "--no-session-persistence", "--setting-sources", "project", "--system-prompt", "You are Capri.", "--append-system-prompt-file", rules });
+                    "--no-session-persistence", "--setting-sources", "project", "--system-prompt", "You are an AI desktop companion.", "--append-system-prompt-file", rules });
                 if (!string.IsNullOrEmpty(model)) { args.Add("--model"); args.Add(model); }
                 Ran claude;
                 while (true)

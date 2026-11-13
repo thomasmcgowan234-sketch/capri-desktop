@@ -188,8 +188,15 @@ namespace CapriDesktop
         {
             recent[slot] = mine;
             slot = (slot + 1) % Recent;
-            // Her gaps between words say nothing: a game or a fan is all a mic hears then, so only what's over her voice counts.
-            if (mine <= Pause) return false;
+            // A gap cannot prove talk-over, but it still ages the evidence. Otherwise isolated bumps on opposite sides of
+            // a pause counted as consecutive speech, and old call evidence could survive indefinitely through quiet output.
+            if (mine <= Pause)
+            {
+                over = 0;
+                loudRecent[loudSlot] = false;
+                loudSlot = (loudSlot + 1) % CallWindow;
+                return false;
+            }
             double loudest = 0;
             foreach (double level in recent) loudest = Math.Max(loudest, level);
             double against = mine < loudest * GapShare ? loudest : mine;

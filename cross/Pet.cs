@@ -486,8 +486,8 @@ namespace CapriDesktop
         // Cyberpunk 2077 starting, or a Night City song coming on, is home for her, like on Windows: she cheers once, then waits
         // two hours before cheering for the same again. Check in on me off stops it.
         internal const double HomeGap = 7200;
-        internal static readonly string[] HomeGameLines = { "Night City?! You're taking me home, choom.", "Ooh, Cyberpunk. Go wreck some corpos for me.", "[SIGNAL CORRUPTED] ...wait. I know that skyline." };
-        internal static readonly string[] HomeSongLines = { "Wait, that's Night City. Turn it up.", "Ooh, my soundtrack. Preem taste.", "Now that's music. You're learning." };
+        internal static readonly string[] HomeGameLines = { "Cyberpunk is starting. What are you planning to do?", "Back in the city. Where did we leave off?", "Ready for another session?" };
+        internal static readonly string[] HomeSongLines = { "That soundtrack is playing again.", "Do you have a favourite track?", "That song came back around." };
         private bool homeBusy, homeGame, homeSong;
         private double homeAt = -HomeGap, gameCheered = -HomeGap, songCheered = -HomeGap;
         // A computer stuck near full CPU for about a minute gets a joke from her, at most once every half hour and never over a
@@ -501,7 +501,7 @@ namespace CapriDesktop
         // they're at the computer, she comes over near the mouse and asks. Noticing her gets a happy line; 20 s of nothing gets a
         // sulk and twice the wait, up to 8 hours.
         internal const double NudgeGap = 7200;
-        internal static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "I'm bored. Entertain me.", "Hey. Hey. Look at me.", "You've been ignoring me for ages. Rude.", "Pay attention to me or I start clicking things.", "Knock knock. It's your favourite gremlin.", "Choom. I'm bored out of my many minds." };
+        internal static readonly string[] NudgeLines = { "Psst. Remember me? Tiny, glitchy, very important.", "What has your attention today?", "Hey. Hey. Look at me.", "I can wait until you have a moment.", "I can stay quiet while you focus.", "Knock knock. It's your favourite gremlin.", "Anything interesting happen since we last talked?" };
         internal static readonly string[] NoticedLines = { "Finally. Hi.", "There you are.", "Knew you couldn't resist me." };
         internal static readonly string[] SnubbedLines = { "Fine. Ignore me. See if I care.", "Wow. Ignored. Noted.", "I'll just sit here. Alone. Bored." };
         private const string NudgeHeard = "(wants attention)";
@@ -638,7 +638,7 @@ namespace CapriDesktop
         internal Pet(IClassicDesktopStyleApplicationLifetime desktop)
         {
             this.desktop = desktop;
-            folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri");
+            folder = CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             if (OperatingSystem.IsLinux() && Program.Smoke == null) Listen = new Ears(folder).Listen;
             fresh = Program.Smoke == null && !File.Exists(Path.Combine(folder, "cross.json"));
             Saved = Program.Smoke != null ? new Settings() : Load();
@@ -648,7 +648,7 @@ namespace CapriDesktop
             fingers = Program.Smoke == null && (OperatingSystem.IsMacOS() ? MacFingers.Available : ComputerJobs.Supported || Fingers.Problem == null);
             Security.Has = delegate(int toggle) { return toggle <= Security.Power || (toggle == Security.Mouse && (OperatingSystem.IsMacOS() && Program.Smoke == null ? MacFingers.Available : fingers)) || toggle == Security.Personal || toggle == Security.ModTools || (toggle == Security.Terminal && TerminalJobs.Supported); };
             Hands.OwnHands = fingers;
-            Security.Load(Saved.Permissions);
+            Security.Load(Program.Smoke == null && Saved.Permissions == null ? Security.Of(Security.Guarded) : Saved.Permissions);
             Security.Changed = delegate { Saved.Permissions = Security.Saved; Save(); if (ContextMenu != null) Sync(); };
             LoginFile = Program.Smoke != null ? Path.Combine(Program.Smoke, OperatingSystem.IsMacOS() ? "capri.plist" : "capri.desktop") : Limbs.LoginFile();
             // A copy that moved since they ticked it takes the login entry over, so it doesn't point at the old place.
@@ -667,6 +667,13 @@ namespace CapriDesktop
             StartVault();
             // Their personality.md, made only when they pick Edit (back in 0.8.0). Her safety lines stay in her code after it.
             Brain.PersonalityPath = Path.Combine(Program.Smoke ?? folder, Brain.PersonalityName);
+            if (Program.Smoke == null)
+            {
+                Brain.Identity = new CompanionIdentity(Path.Combine(folder, "companion"));
+                Brain.Routine = new CompanionRoutine(Path.Combine(folder, "companion"));
+                CompanionObservation.Configure();
+                InitializeDevelopment();
+            }
             // Remember our chats, like on Windows: every chat goes in a daily transcript, and the brain they picked folds older
             // lines into memories.md, which she reads every chat.
             Brain.MemoriesPath = Path.Combine(Program.Smoke ?? folder, "memories.md");
@@ -808,7 +815,7 @@ namespace CapriDesktop
             frames.Interval = TimeSpan.FromMilliseconds(33);
             frames.Tick += delegate { Program.Guard(Tick); };
             // Closing her while held must not leave the frame timer moving a closed window.
-            Closed += delegate { StopNativeListening(); Unhold(); pressed = dragging = dragPending = false; frames.Stop(); Desk.Dispose(); Screens.Changed -= BindDesktopScreens; };
+            Closed += delegate { StopDevelopment(); StopNativeListening(); Unhold(); pressed = dragging = dragPending = false; frames.Stop(); Desk.Dispose(); Screens.Changed -= BindDesktopScreens; };
             Deactivated += delegate { if (!(Desk is HyprlandDesk)) Program.Guard(Unhold); };
             Opened += delegate
             {
@@ -1049,8 +1056,11 @@ namespace CapriDesktop
             if (!quiet) Sfx.Play(Cue.Arrive);
         }
 
+        private bool BackgroundPaused { get { return Brain.Routine != null && Brain.Routine.Paused; } }
+
         private void Tick()
         {
+            frames.Interval = TimeSpan.FromMilliseconds(Brain.Routine != null && Brain.Routine.LowResource ? 100 : 33);
             double now = Now;
             TickClones();
             Desk.BindScreens(Screens.All);
@@ -1063,7 +1073,7 @@ namespace CapriDesktop
             CheckStyle();
             CheckSelfTools();
             if (presence != null && now >= nextStatus) { nextStatus = now + 1; presence.Show(Saved.NoDiscord ? null : Doing); }
-            if (Program.Smoke == null && now >= nextUpdate) { nextUpdate = now + 6 * 3600; CheckUpdate(); }
+            // Fork releases are installed manually; never poll the original author's feed.
             ShowUnreadableNotice();
             if (UpdateNews != null && !away && !dragging && Talk.Quiet) { Talk.Answer("(update)", UpdateNews); UpdateNews = null; }
             if (outro != null && now >= outroAt) { Action next = outro; outro = null; next(); }
@@ -1073,7 +1083,7 @@ namespace CapriDesktop
             if (away && !IsVisible)
             {
                 Talk.Gone();
-                if (now >= nextCheck && Program.Smoke == null) { nextCheck = now + 0.25; CheckPopIn(now); }
+                if (now >= nextCheck && Program.Smoke == null) { nextCheck = now + (Brain.Routine != null && Brain.Routine.LowResource ? 1 : 0.25); CheckPopIn(now); }
                 if (smoke != null) smoke.Tick(now);
                 return;
             }
@@ -1086,7 +1096,7 @@ namespace CapriDesktop
             if (walking && !pressed) Walk(now);
             if (now >= nextCheck && !away && !pressed)
             {
-                nextCheck = now + 0.25;
+                nextCheck = now + (Brain.Routine != null && Brain.Routine.LowResource ? 1 : 0.25);
                 CheckSeat(now);
                 CheckWander(now);
                 CheckMusic(now);
@@ -1122,7 +1132,7 @@ namespace CapriDesktop
 
         // "Check my screen": her brain looks at a screenshot when they ask, like on Windows. Watch my screen's glances are below.
         // Screenshots here show her and her bubble too, which aren't part of their screen.
-        internal const string LookAsk = "Describe what's on this screen in two or three plain sentences: what kind of game or app it is (name it only if the name is on screen), what's happening, and any text or numbers that matter. Don't guess who a person is from their face; name someone only if their name is written on screen. The small red-haired anime girl with a speech bubble is Capri, the desktop companion, not part of their screen, so leave her out.";
+        internal const string LookAsk = "Describe what's on this screen in two or three plain sentences: what kind of game or app it is (name it only if the name is on screen), what's happening, and any text or numbers that matter. Don't guess who a person is from their face; name someone only if their name is written on screen. The desktop companion avatar and its speech bubble are overlays, not part of the observed application, so leave her out.";
 
         private string LookAt(string focus) { return RequestedVision.Run(Brain, new ToolArguments { Focus = focus }); }
 
@@ -1143,6 +1153,13 @@ namespace CapriDesktop
 
         internal void CheckUpdate(bool asked = false)
         {
+            if (Program.Smoke == null)
+            {
+                updateNote = CompanionProfile.UpdateMessage;
+                if (asked) UpdateNews = updateNote;
+                NotifySettings();
+                return;
+            }
             updateAsked |= asked;
             if (updateChecking) return;
             updateChecking = true;
@@ -1166,12 +1183,7 @@ namespace CapriDesktop
 
         private static string FetchUpdate()
         {
-            using (System.Net.Http.HttpClient client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) })
-            {
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Capri-Desktop");
-                client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-                return client.GetStringAsync(LatestRelease).GetAwaiter().GetResult();
-            }
+            throw new InvalidOperationException(CompanionProfile.UpdateMessage);
         }
 
         // A newer finished release puts "Get Capri X" in her menu, and she mentions it once per version.
@@ -3962,7 +3974,7 @@ namespace CapriDesktop
             });
         }
 
-        private bool CanPop { get { return !quitting && !dragging && !pressed && !falling && outro == null && popOut < 0 && nudgeOut < 0 && Talk.Quiet && (ContextMenu == null || !ContextMenu.IsOpen); } }
+        private bool CanPop { get { return !BackgroundPaused && !quitting && !dragging && !pressed && !falling && outro == null && popOut < 0 && nudgeOut < 0 && Talk.Quiet && (ContextMenu == null || !ContextMenu.IsOpen); } }
 
         // She glitches out if she's showing, then in at a random spot along the top of her screen, says hi and drops onto a window.
         internal void PopIn()
@@ -4017,6 +4029,7 @@ namespace CapriDesktop
 
         private void CheckHome(double now)
         {
+            if (BackgroundPaused || !Brain.IdentityInterested("Cyberpunk")) return;
             if (Saved.NoCheckIns || homeBusy || now - homeAt < 15) return;
             homeBusy = true;
             homeAt = now;
@@ -4094,6 +4107,7 @@ namespace CapriDesktop
 
         internal void CheckNudge(double now)
         {
+            if (BackgroundPaused) return;
             bool attending = clicks != noticedClicks || asking != noticedAsked || petTicket != noticedPets || dragging || pressed || Talk.Typing || (ContextMenu != null && ContextMenu.IsOpen);
             if (noticed < 0 || attending) { noticed = now; noticedClicks = clicks; noticedAsked = asking; noticedPets = petTicket; }
             if (nudgeOut >= 0)
@@ -4242,7 +4256,7 @@ namespace CapriDesktop
 
         private void CheckGlance(double now)
         {
-            if (!Saved.Watch || glancing || Hushed) return;
+            if (BackgroundPaused || !CompanionObservation.Allowed || !Saved.Watch || glancing || Hushed) return;
             if (nextGlance < 0) nextGlance = now + Math.Min(20, GlanceGap);
             if (now < nextGlance || Brain.Model == null || away || dragging || pressed || !Talk.Quiet) return;
             nextGlance = now + GlanceGap * (0.8 + random.NextDouble() * 0.4);
@@ -4321,7 +4335,7 @@ namespace CapriDesktop
             glanceFailed = null;
             if (string.IsNullOrEmpty(said)) { Glimpsed(saw); return; }
             // Quiet going on while she looked drops the line too, like on Windows.
-            if (ticket != asking || away || Hushed || dragging || !Talk.Quiet) { lastPrint = null; Glimpsed(saw); return; }
+            if (BackgroundPaused || !CompanionObservation.Allowed || ticket != asking || away || Hushed || dragging || !Talk.Quiet) { lastPrint = null; Glimpsed(saw); return; }
             // A line about something she already brought up is dropped like a SKIP, so the same scene waits before she tries again.
             if (Glances.Repeats(said, RecentGlances(Now), Brain.Nickname)) { Glimpsed(saw); return; }
             glanced.Add(Tuple.Create(Now, said));
@@ -4426,6 +4440,8 @@ namespace CapriDesktop
         {
             text = (text ?? "").Trim();
             if (text.Length == 0) return;
+            long developmentInput = 0;
+            if (development != null) development.Invalidate(false);
             StopListening();
             if (modSendDepth == 0 && System.Text.RegularExpressions.Regex.IsMatch(text, @"^(?:stop|cancel)(?: please)?[.!]?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) { StopNativeWork(); StopCrash(); ClonesOff(); return; }
             if (!meeting.Asking)
@@ -4436,6 +4452,21 @@ namespace CapriDesktop
                 bool fromMod = modSendDepth > 0 || sent != text;
                 text = sent;
                 if (fromMod) Security.ModSaid(text); else Security.TheySaid();
+            }
+            if (modSendDepth == 0 && !Security.FromMod(text))
+            {
+                string companion = Brain.CompanionCommand(text);
+                if (companion != null)
+                {
+                    Brain.Cancel();
+                    if (text.Equals("/observe stop", StringComparison.OrdinalIgnoreCase)) { Eyes.Stop(); StopNativeWork(); }
+                    ownedVoice?.Cancel();
+                    voice.Stop();
+                    Reply(++asking, text, companion, textOnly: true);
+                    return;
+                }
+                Brain.IdentityEvidence(text);
+                if (development != null) developmentInput = development.Input(text, true);
             }
             ModList.LogHearing(text, true);
             Typed();
@@ -4485,11 +4516,11 @@ namespace CapriDesktop
             if (Think == null && Brain.Model == null) { Reply(ticket, text, Offline); FindBrain(); return; }
             Talk.Thinking(text);
             long voiceTicket = fromVoice ? voiceRecovery.Begin() : 0;
-            Ask(ticket, text, 0, voiceTicket);
+            Ask(ticket, text, 0, voiceTicket, developmentInput);
         }
 
         // Her brain answers on the thread pool. A stuck NVIDIA model hands the message to the next one, twice at most, like on Windows.
-        private void Ask(int ticket, string text, int switches, long voiceTicket = 0)
+        private void Ask(int ticket, string text, int switches, long voiceTicket = 0, long developmentInput = 0)
         {
             Func<string, string> think = Think;
             bool follows = FollowUps;
@@ -4524,6 +4555,7 @@ namespace CapriDesktop
                     if (HoldNews(ticket)) return;
                     if (ticket == newsTicket && failed) { Talk.Answer("(updated)", News.Line); selfTools.Replied(ticket); KeepNews(); return; }
                     Reply(ticket, ticket == newsTicket ? "(updated)" : text, said, ticket == newsTicket ? null : after);
+                    if (!failed && ticket != newsTicket && development != null) development.Replied(developmentInput);
                 });
             });
         }
@@ -4579,7 +4611,7 @@ namespace CapriDesktop
             }
         }
 
-        private void Reply(int ticket, string heard, string said, string after = null, bool following = false)
+        private void Reply(int ticket, string heard, string said, string after = null, bool following = false, bool textOnly = false)
         {
             int input = inputTurn, answer = answerTurn;
             followUp.Drop();
@@ -4588,8 +4620,8 @@ namespace CapriDesktop
             said = ModsReplying(said, source);
             lastReply = said;
             ModsReplied(said, source);
-            string spoken = Speaks ? ModsSpeaking(said) : said;
-            if (!Speaks || Voice.Spoken(spoken).Length == 0) { if (ShowReply(ticket, heard, said, 0, after, following, input, answer)) TypeAlong(said, ticket); return; }
+            string spoken = !textOnly && Speaks ? ModsSpeaking(said) : said;
+            if (textOnly || !Speaks || Voice.Spoken(spoken).Length == 0) { if (ShowReply(ticket, heard, said, 0, after, following, input, answer)) TypeAlong(said, ticket); return; }
             ISpeaker speaker = Speaker;
             int speechTicket = speechGeneration;
             if (!following) Talk.Thinking(heard);

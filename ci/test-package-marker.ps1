@@ -4,10 +4,10 @@ $ErrorActionPreference = 'Stop'
 if ($env:CAPRI_DISPOSABLE_USER -ne '1') { throw 'Set CAPRI_DISPOSABLE_USER=1 in a disposable Windows profile.' }
 
 $setup = (Resolve-Path $Setup).Path
-$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Capri'
+$capriDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'CapriCompanion\app'
 $marker = Join-Path $capriDir 'Capri.package'
-$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'Capri.lnk'
-$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Desktop'
+$link = Join-Path ([Environment]::GetFolderPath('Programs')) 'AI Companion.lnk'
+$arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Capri.Companion'
 foreach ($installed in (Join-Path $capriDir '.capri-install'), (Join-Path $capriDir 'Capri.exe'), $marker, $link, $arp) {
     if (Test-Path $installed) { throw "Capri is already installed for this user: $installed" }
 }

@@ -86,6 +86,7 @@ namespace CapriDesktop
 
         private static EyesObservation RequestNative(string focus, string screen, bool quiet, long ticket, CancellationToken token)
         {
+            CompanionObservation.RequireCapture();
             CheckTicket(ticket);
             Stopwatch clock = Stopwatch.StartNew();
             HyprlandDesktop desktop = HyprlandDesktop.Current;
@@ -213,14 +214,14 @@ namespace CapriDesktop
         // version lets Mac ask again.
         private static void ForgetOldBuild()
         {
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Capri");
+            string folder = CompanionProfile.CrossData(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             string marker = Path.Combine(folder, "screen-asked.txt");
             string version = typeof(Eyes).Assembly.GetName().Version.ToString();
             if (!FreshAsk(File.Exists(marker) ? File.ReadAllText(marker) : null, version)) return;
             Directory.CreateDirectory(folder);
             File.WriteAllText(marker, version);
             ProcessStartInfo reset = new ProcessStartInfo("tccutil") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
-            foreach (string word in new[] { "reset", "ScreenCapture", "io.github.lachydotmcg.capri" }) reset.ArgumentList.Add(word);
+            foreach (string word in new[] { "reset", "ScreenCapture", Limbs.MacBundle }) reset.ArgumentList.Add(word);
             using (Process clearing = Process.Start(reset)) clearing.WaitForExit(5000);
         }
 

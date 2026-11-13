@@ -198,6 +198,7 @@ namespace CapriDesktop
         }
 
         internal string Address { get { lock (gate) return "http://127.0.0.1:" + port; } }
+        internal bool Awake { get { lock (gate) return server != null && !server.HasExited; } }
 
         internal bool Crashed { get { lock (gate) return server != null && server.HasExited; } }
 

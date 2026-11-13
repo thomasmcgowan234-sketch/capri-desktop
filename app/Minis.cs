@@ -163,7 +163,7 @@ namespace CapriDesktop
 
         internal string BoardText()
         {
-            StringBuilder board = new StringBuilder("\nCapri's desktop board: " + Title + ". You are Capri, playing against the user. Level: " + Level + ".\n");
+            StringBuilder board = new StringBuilder("\nThe desktop board: " + Title + ". You are playing against the user. Level: " + Level + ".\n");
             if (Kind == "rock_paper_scissors")
                 board.Append("First to 3. User points: ").Append(You).Append(". Capri points: ").Append(Her).Append(".\nLast hands: user ").Append(YourHand < 0 ? "none" : Hands[YourHand]).Append(", Capri ").Append(HerHand < 0 ? "none" : Hands[HerHand]).Append(".\n");
             else
